@@ -4,8 +4,26 @@
 import numpy as np
 import time
 import pandas as pd
+import statsmodels.api as sm
 
 # State variables: age, wage, average atp points, retirement age and marital status
+# Regularize to avoid log(0)
+epsilon = 1e-4
+df = df[df['apt_t'] > 0]  # Remove 0s to avoid -inf
+df['log_apt_t'] = np.log(df['apt_t'])
+
+# Construct regression variables
+df['age_squared'] = df['age'] ** 2
+X = sm.add_constant(df[['log_apt_t', 'age', 'age_squared']])
+y = np.log(df['apt_t1'])
+
+# Estimate OLS
+model = sm.OLS(y, X).fit()
+print(model.summary())
+
+# Extract coefficients and residual variance
+gamma = model.params
+sigma2 = model.mse_resid
 
 class retirement():
     def __init__(self,**kwargs):
@@ -16,9 +34,7 @@ class retirement():
         # a) parameters
         # Spaces
         #self.n = 175                      # Number of grid points
-        #self.max = 108                    # Max age
-        ages = np.arange(50, 108)
-        
+        #self.max = 108                    # Max age  
 
         # structual parameters
 
@@ -27,6 +43,28 @@ class retirement():
         self.phi = 2.45569                                      # leisure time preference
         self.beta = 0.97                                    # Discount factor
 
+        ages = np.arange(50, 109)           # Age 50 to 108
+        married_states = [0,1]              # Married or not married
+        retired_states = [0,1]              # Retired or not retired   
+        atp_grid = np.linspace(0, 6.5, 65)  # ATP points grid
+
+        def wage(age): 
+            return 300 + 5 * age  # placeholder
+        
+        def pension(age_ret, atp, married): 
+            # Implement ATP + basic pension formula
+            ba = 38600  # base amount
+            bp = 0.96 * ba if not married else 0.785 * ba
+            supplement = max(0, 0.555 * ba - 0.6 * atp * ba)
+            supplement = min(supplement, 0.555 * ba)
+            atp_pension = 0.6 * atp * ba
+            adj =  (1.007**(12*(age_ret - 65)) if age_ret > 65 else 0.995**(12*(65 - age_ret)))
+            return adj * (bp + supplement + atp_pension)
+
+        # Leisure
+        def leisure(retired): 
+            return 1.0 if retired else 0.55
+        
         # b. update baseline parameters using keywords
         for key,val in kwargs.items():
             setattr(self,key,val) 
@@ -60,6 +98,59 @@ class retirement():
         self.P1 = P1
         self.P2 = P2
 
+    def utility(c, f):
+        return alpha * np.log(c + 1e-6) + phi * np.log(f)
+    
+
+    def bellman(V, survival, max_age=100):
+        """Performs one value iteration step"""
+        V_new = np.copy(V)
+
+        for a in range(50, max_age):      # age
+            for r in retired_states:      # retired
+                for m in married_states:  # marital
+                    for i, atp in enumerate(atp_grid):
+                        key = (a, r, m, i)
+
+                        if r == 1:
+                            # Retired: deterministic future
+                            b = pension(a, atp, m)
+                            c = b
+                            f = leisure(1)
+                            u = utility(c, f)
+                            cont_val = 0 if a == max_age else beta * survival[a] * V[a+1, 1, m, i]
+                            V_new[key] = u + cont_val
+                        else:
+                            # Choice: work (0) or retire (1)
+                            # Work
+                            w = wage(a)
+                            atp_new = update_atp(atp, a, gamma, sigma2)
+                            i_new = np.argmin(np.abs(atp_grid - atp_new))
+                            c_w = w
+                            u_w = utility(c_w, leisure(0))
+                            cont_w = 0 if a == max_age else beta * survival[a] * V[a+1, 0, m, i_new]
+
+                            # Retire
+                            b = pension(a, atp, m)
+                            c_r = b
+                            u_r = utility(c_r, leisure(1))
+                            cont_r = 0 if a == max_age else beta * survival[a] * V[a+1, 1, m, i]
+
+                            V_new[key] = max(u_w + cont_w, u_r + cont_r)
+
+        return V_new
+    
+    def update_atp(apt_t, age, gamma, sigma2, epsilon=1e-4):
+        log_apt_t = np.log(apt_t + epsilon)
+        log_apt_t1 = (
+            gamma['const'] +
+            gamma['log_apt_t'] * log_apt_t +
+            gamma['age'] * age +
+            gamma['age_squared'] * age**2 +
+            0.5 * sigma2
+        )
+        return min(np.exp(log_apt_t1), 6.5)  # Cap at statutory max
+    
     def bellman(self,ev0,output=1):
         '''Evaluate Bellman operator, choice probability and Frechet derivative - written in integrated value form'''
 

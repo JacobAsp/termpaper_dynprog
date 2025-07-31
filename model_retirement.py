@@ -5,6 +5,8 @@ import numpy as np
 import time
 import pandas as pd
 
+# State variables: age, wage, average atp points, retirement age and marital status
+
 class retirement():
     def __init__(self,**kwargs):
         self.setup(**kwargs)
@@ -14,13 +16,14 @@ class retirement():
         # a) parameters
         # Spaces
         self.n = 175                      # Number of grid points
-        self.max = 450                    # Max of mileage
+        self.max = 108                    # Max age
 
         # structual parameters
+
         self.p = np.array([0.0937, 0.4475, 0.4459, 0.0127])   # Transition probability
-        self.RC = 11.7257                                     # Replacement cost
-        self.c = 2.45569                                      # Cost parameter
-        self.beta = 0.9999                                    # Discount factor
+        self.alpha = 11.7257                                     # consumption preference
+        self.theta1 = 2.45569                                      # leisure time preference
+        self.beta = 0.97                                    # Discount factor
 
         # b. update baseline parameters using keywords
         for key,val in kwargs.items():
@@ -59,19 +62,19 @@ class retirement():
         '''Evaluate Bellman operator, choice probability and Frechet derivative - written in integrated value form'''
 
         # Value of options:
-        value_keep = -self.cost + self.beta * self.P1 @ ev0 # nx1 matrix
-        value_replace = -self.RC - self.cost[0] + self.beta * self.P2 @ ev0   # 1x1
+        value_work = -self.cost + self.beta * self.P1 @ ev0 # nx1 matrix
+        value_retire = -self.RC - self.cost[0] + self.beta * self.P2 @ ev0   # 1x1
 
         # recenter Bellman by subtracting max(VK, VR)
-        maxV = np.maximum(value_keep, value_replace) 
-        logsum = (maxV + np.log(np.exp(value_keep-maxV)  +  np.exp(value_replace-maxV)))  # Compute logsum to handle expectation over unobserved states
+        maxV = np.maximum(value_work, value_retire) 
+        logsum = (maxV + np.log(np.exp(value_work-maxV)  +  np.exp(value_retire-maxV)))  # Compute logsum to handle expectation over unobserved states
         ev1 = logsum # Bellman operator as integrated value
 
         if output == 1:
             return ev1
 
         # Compute choice probability of keep
-        pk = 1/(1+np.exp(value_replace-value_keep))       
+        pk = 1/(1+np.exp(value_retire-value_work))       
         
         if output == 2:
             return ev1, pk

@@ -15,14 +15,16 @@ class retirement():
   
         # a) parameters
         # Spaces
-        self.n = 175                      # Number of grid points
-        self.max = 108                    # Max age
+        #self.n = 175                      # Number of grid points
+        #self.max = 108                    # Max age
+        ages = np.arange(50, 108)
+        
 
         # structual parameters
 
         self.p = np.array([0.0937, 0.4475, 0.4459, 0.0127])   # Transition probability
         self.alpha = 11.7257                                     # consumption preference
-        self.theta1 = 2.45569                                      # leisure time preference
+        self.phi = 2.45569                                      # leisure time preference
         self.beta = 0.97                                    # Discount factor
 
         # b. update baseline parameters using keywords

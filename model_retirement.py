@@ -96,6 +96,44 @@ class retirement():
         
         return dev1
 
+    def read_spardata(self, bustypes = [1,2,3,4]): 
+        data = np.loadtxt(open("KPS Data/cleaned_spardata"), delimiter=" ", skiprows=1) #datapath
+        idx = data[:,0]             # bus id
+        bustype = data[:,1]         # bus type
+        dl = data[:,4]              # laggend replacement dummy
+        d = np.append(dl[1:], 0)    # replacement dummy
+        x = data[:,6]               # Odometer
+
+        # Discretize odometer data into 1,2,...,n
+        x = np.ceil(x*self.n/(self.max*1000))
+
+        # Montly mileage
+        dx1 = x-np.append(0,x[0:-1])
+        dx1 = dx1*(1-dl)+x*dl
+        dx1 = np.where(dx1>len(self.p),len(self.p),dx1) # We limit the number of steps in mileage
+
+        # change type to integrer
+        x = x.astype(int)
+        dx1 = dx1.astype(int)
+
+        # Collect in a dataframe
+        remove_first_row_index=idx-np.append(0,idx[:-1])
+        data = {'id': idx,'bustype':bustype, 'd': d, 'x': x, 'dx1': dx1, 'boolean': remove_first_row_index}
+        df= pd.DataFrame(data) 
+
+        # Remove observations with missing lagged mileage
+        df = df.drop(df[df.boolean!=0].index)
+
+        # Select bustypes 
+        for j in [1,2,3,4]:
+            if j not in bustypes:
+                df = df.drop(df[df.bustype==j].index) 
+
+        # save data
+        dta = df.drop(['id','bustype','boolean'],axis=1)
+        
+        return dta
+
     def read_busdata(self, bustypes = [1,2,3,4]): 
         data = np.loadtxt(open("busdata1234.csv"), delimiter=",")
         idx = data[:,0]             # bus id

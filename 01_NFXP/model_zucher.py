@@ -13,12 +13,12 @@ class zurcher():
   
         # a) parameters
         # Spaces
-        self.n = 175                      # Number of grid points
-        self.max = 450                    # Max of mileage
+        self.n = 175                      # Number of grid points , ie. number of states or mileage. We choose this. 
+        self.max = 450                    # Max of mileage, ie. we don't allow for driving more than 450,000 miles pr. period.
 
         # structual parameters
-        self.p = np.array([0.0937, 0.4475, 0.4459, 0.0127])   # Transition probability
-        self.RC = 11.7257                                     # Replacement cost
+        self.p = np.array([0.0937, 0.4475, 0.4459, 0.0127])   # Transition probability,     Hvorfor vælger han en array på 4? 
+        self.RC = 11.7257                                     # Replacement cost    
         self.c = 2.45569                                      # Cost parameter
         self.beta = 0.9999                                    # Discount factor
 

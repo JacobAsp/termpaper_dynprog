@@ -6,25 +6,6 @@ import time
 import pandas as pd
 import statsmodels.api as sm
 
-# State variables: age, wage, average atp points, retirement age and marital status
-# Regularize to avoid log(0)
-epsilon = 1e-4
-df = df[df['apt_t'] > 0]  # Remove 0s to avoid -inf
-df['log_apt_t'] = np.log(df['apt_t'])
-
-# Construct regression variables
-df['age_squared'] = df['age'] ** 2
-X = sm.add_constant(df[['log_apt_t', 'age', 'age_squared']])
-y = np.log(df['apt_t1'])
-
-# Estimate OLS
-model = sm.OLS(y, X).fit()
-print(model.summary())
-
-# Extract coefficients and residual variance
-gamma = model.params
-sigma2 = model.mse_resid
-
 class retirement():
     def __init__(self,**kwargs):
         self.setup(**kwargs)
@@ -43,7 +24,7 @@ class retirement():
         self.phi = 2.45569                                      # leisure time preference
         self.beta = 0.97                                    # Discount factor
 
-        ages = np.arange(50, 109)           # Age 50 to 108
+        ages = np.arange(50, 103)           # Age 50 to 102
         married_states = [0,1]              # Married or not married
         retired_states = [0,1]              # Retired or not retired   
         atp_grid = np.linspace(0, 6.5, 65)  # ATP points grid

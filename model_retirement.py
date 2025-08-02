@@ -42,6 +42,8 @@ class retirement():
             adj =  (1.007**(12*(age_ret - 65)) if age_ret > 65 else 0.995**(12*(65 - age_ret)))
             return adj * (bp + supplement + atp_pension)
 
+
+
         # Leisure
         def leisure(retired): 
             return 1.0 if retired else 0.55
@@ -65,6 +67,9 @@ class retirement():
         else:
             return self.wage(self.age)
 
+#Jacob har lavet state_transition matrices i main. Vi kan godt smide dem herind måske? 
+# Det kan vi ikke. Så nedenstående kode er redundant. 
+
     def state_transition(self):
         '''Compute transition probability matrixes conditional on choice'''
         p = np.append(self.p,1-np.sum(self.p))         # Get transition probabilities
@@ -86,9 +91,39 @@ class retirement():
         self.P1 = P1
         self.P2 = P2
 
+    # Hvad bruger vi den her til ? Vi skal have utility function ned i Bellman funktionen. 
     def utility(c, f):
         return alpha * np.log(c + 1e-6) + phi * np.log(f)
     
+
+# this is what we have to alter. We'we already altered som things. 
+
+# "Original" Bellman code. 
+def bellman(self,ev0,output=1):
+        '''Evaluate Bellman operator, choice probability and Frechet derivative - written in integrated value form'''
+
+        # Value of options:
+        value_work = self.alpha * log(self.wage) + self.phi * log(self.leisure) + self.beta * self.P1 @ ev0 # nx1 matrix
+        value_retire = -self.RC - self.cost[0] + self.beta * self.P2 @ ev0   # 1x1
+
+        # recenter Bellman by subtracting max(VK, VR)
+        maxV = np.maximum(value_keep, value_replace) 
+        logsum = (maxV + np.log(np.exp(value_keep-maxV)  +  np.exp(value_replace-maxV)))  # Compute logsum to handle expectation over unobserved states
+        ev1 = logsum # Bellman operator as integrated value
+
+        if output == 1:
+            return ev1
+
+        # Compute choice probability of keep
+        pk = 1/(1+np.exp(value_replace-value_keep))       
+        
+        if output == 2:
+            return ev1, pk
+
+        # Compute derivative of Bellman operator
+        dev1 = self.dbellman(pk)
+
+        return ev1, pk, dev1
 
     def bellman(V, survival, max_age=100):
         """Performs one value iteration step"""

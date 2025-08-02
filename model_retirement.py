@@ -60,7 +60,14 @@ class retirement():
 
     def consumption(retired):
         'computing consumption based on wages or pension. If retired consumption is equal to pension, if not equal to wages' 
+<<<<<<< HEAD
         if self.retired == 1
+=======
+        if self.retired == 1:
+            return self.pension(self.age, self.atp, self.married)
+        else:
+            return self.wage(self.age)
+>>>>>>> e540d82183f3bb45e0b9dd44d34691f564a0d005
 
     def state_transition(self):
         '''Compute transition probability matrixes conditional on choice'''

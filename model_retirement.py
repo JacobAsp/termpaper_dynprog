@@ -54,9 +54,13 @@ class retirement():
         self.create_grid()
 
     def create_grid(self):
-        self.grid = np.arange(0,self.n)         # milage grid
-        self.= 0.001*self.c*self.grid      # cost function
+        self.grid = np.arange(0,self.n)         # milage grid, obviously not mileage grid. Rather state grid.  
+        self.utility= self.alpha*consumption + self.phi*leisure   # We have to call the leisure time and consumptions as functions defined otherplace
         self.state_transition() 
+
+    def consumption(self):
+        'computing consumption based on wages or pension. If retired consumption is equal to pension, if not equal to wages' 
+        if self.retired == 1
 
     def state_transition(self):
         '''Compute transition probability matrixes conditional on choice'''

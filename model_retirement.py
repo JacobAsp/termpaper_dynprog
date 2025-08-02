@@ -59,9 +59,7 @@ class retirement():
         self.state_transition() 
 
     def consumption(retired):
-        'computing consumption based on wages or pension. If retired consumption is equal to pension, if not equal to wages' 
-        if self.retired == 1:
-
+        'computing consumption based on wages or pension. If retired consumption is equal to pension, if not equal to wages'
         if self.retired == 1:
             return self.pension(self.age, self.atp, self.married)
         else:

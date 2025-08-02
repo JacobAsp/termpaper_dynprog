@@ -19,10 +19,10 @@ class retirement():
 
         # structual parameters
 
-        self.p = np.array([0.0937, 0.4475, 0.4459, 0.0127])   # Transition probability
-        self.alpha = 11.7257                                     # consumption preference
+        self.p = np.array([0.0937, 0.4475, 0.4459, 0.0127])     # Transition probability, this we might have to alter
+        self.alpha = 11.7257                                    # consumption preference
         self.phi = 2.45569                                      # leisure time preference
-        self.beta = 0.97                                    # Discount factor
+        self.beta = 0.97                                        # Discount factor
 
         ages = np.arange(50, 103)           # Age 50 to 102
         married_states = [0,1]              # Married or not married
@@ -30,9 +30,9 @@ class retirement():
         atp_grid = np.linspace(0, 6.5, 65)  # ATP points grid
 
         def wage(age): 
-            return 300 + 5 * age  # placeholder
+            return 300 + 5 * age            # placeholder
         
-        def pension(age_ret, atp, married): 
+        def pension(age_ret, atp, married):                    # Here we calculate the pension points and thus the pension amount
             # Implement ATP + basic pension formula
             ba = 38600  # base amount
             bp = 0.96 * ba if not married else 0.785 * ba
@@ -54,14 +54,14 @@ class retirement():
         self.create_grid()
 
     def create_grid(self):
-        self.grid = np.arange(0,self.n) # milage grid
-        self.cost = 0.001*self.c*self.grid  # cost function
+        self.grid = np.arange(0,self.n)         # milage grid
+        self.= 0.001*self.c*self.grid      # cost function
         self.state_transition() 
 
     def state_transition(self):
         '''Compute transition probability matrixes conditional on choice'''
-        p = np.append(self.p,1-np.sum(self.p)) # Get transition probabilities
-        P1 = np.zeros((self.n,self.n)) # Initialize transition matrix
+        p = np.append(self.p,1-np.sum(self.p))         # Get transition probabilities
+        P1 = np.zeros((self.n,self.n))                 # Initialize transition matrix
         # Loop over rows
         for i in range(self.n):
             # Check if p vector fits entirely

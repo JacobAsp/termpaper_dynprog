@@ -5,6 +5,8 @@ rdmodel_assets.py: den kode vi prøvede at ændre til at indeholde assets.
 
 PS2: Der hvor vi estimerer modellen og alle de filer du skal bruge for at løse problemset 2
 rdmodel.py er nærmest samme fil, men med noget ekstra kode som forfatteren har lavet, her har jeg ikke kommenteret
-rdmodel_jit.py er en hurtigere udgave af rdmodel og den jeg generelt bruger (noget med at oversætte python kode til maskinkode så det kører ligesom i C)
+rdmodel_jit.py er en hurtigere udgave af rdmodel og den jeg generelt bruger (noget med at oversætte python kode til maskinkode så det kører ligesom i C). I denne kode har jeg også lavet nogle kommentarer
 Jobsearch2.ipynb er min løsning af problemset 2, så du kan lege lidt rundt i den og se hvad der sker (men nok også lidt en uoverskuelig fil)
 rdmodel_assets.py er mit forsøg på at modificere rdmodel_jit.py til at indeholde assets, men den er ikke færdig endnu, jeg ved dog hvad vi skal gøre nu
+
+Generelt når vi kører koden er det Standard modellen når eta, lambda og N = 0, og Reference Depedence modellen når eta, lambda og N > 0.

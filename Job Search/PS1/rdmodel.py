@@ -137,8 +137,8 @@ def benefit_path(b1,b2,b3,welfare,T1,T2,T3,T):
         Returns:
             benefits (array): Benefit path in unemployment
     '''
-    benefits        = np.zeros(T)
-    benefits[0:T1]  = b1
+    benefits        = np.zeros(T)       # Laver en vektor med T, elementer. 
+    benefits[0:T1]  = b1                # for de rigtige tidspunkter tilføjer den benefit levels. 
     benefits[T1:T2] = b2
     benefits[T2:T3] = b3
     benefits[T3:T]  = welfare

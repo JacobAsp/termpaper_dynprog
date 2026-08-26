@@ -1,45 +1,14 @@
 ########################################################################### 
 ##################### We import the needed packages #######################
 import numpy as np
+import pandas as pd
 from time import process_time
 import matplotlib.pyplot as plt
 import scipy
 from scipy import interpolate  # type: ignore # Interpolation routines
 from matplotlib.gridspec import GridSpec
+from numba import njit, vectorize
 
-########################################################################### 
-######################## We determine parameters ##########################
-
-delta = 0.93
-gamma = 0.9
-eta = 1
-k = 300
-k1 = 300
-k2 = 250
-k3 = 200
-q1 = 0.3
-q2 = 0.3
-lmbda = 4.9
-N = 6
-
-abar = [0, 10000]
-n_a = 100
-n_c = 500
-
-T1 = 6
-T2 = 18
-T3 = 24
-T = 44
-b1= 222
-b2 = 222
-b3 = 114 
-welfare = 90
-w = 675
-R = 0.01
-
-params_single = np.array([delta, gamma, eta, k, lmbda, N])
-params_multi = np.array([delta, gamma, eta, k1, k2, k3, q1, q2,lmbda, N])
-institutions = np.array([ n_a, n_c, T1, T2, T3, T, b1, b2, b3, welfare, w, R])
 
 
 #########################################################################################
@@ -49,6 +18,7 @@ institutions = np.array([ n_a, n_c, T1, T2, T3, T, b1, b2, b3, welfare, w, R])
 
 #########################################################################################
 # We make the gain-loss function
+#@njit(cache=True)
 def u(c, r, eta, lmbda):        # returns the utility of current consumption + the gain_loss parameter
 
     gainloss = np.where(
@@ -62,6 +32,7 @@ def u(c, r, eta, lmbda):        # returns the utility of current consumption + t
 #########################################################################################
 # We make the search cost function
 # Search Cost: here arguments are scale parameter (k), level of search effort (s) and curvature parameter (gamma)
+#@njit(cache=True)
 def search_cost(s,k,gamma):
     '''
     Returns the value of the search cost function.
@@ -76,6 +47,7 @@ def search_cost(s,k,gamma):
 
 #########################################################################################
 # We make the function for the optimal search effort, given the value of employment and unemployment
+#@njit(cache=True)
 def optimal_search_effort(V_emp,V_uemp,k,gamma,delta):
     '''
     Returns the value of the inverse of the first derivative of the search cost function.
@@ -98,7 +70,7 @@ def optimal_search_effort(V_emp,V_uemp,k,gamma,delta):
 
 #########################################################################################
 # We make the function for the value of employment using ref path and steady state values 
-
+#@njit(cache=True)
 def employment_BI(Vss, ref_path, delta, eta, lmbda, R, w, abar, T, N, n_a, n_c):
     abar[0] = np.maximum(np.finfo(float).eps, abar[0])              # vælger numerisk nul, så vi kan tage log. 
     a = np.linspace(abar[0], abar[1], n_a).reshape((n_a, 1))        # laver en n_a x 1 matrice med værdierne fra 0 til maks asset level. 
@@ -160,6 +132,7 @@ class ref_inc_path():
         self.N = N              # antal referenceperioder
         self.eta = eta          # det er for at kunne modificere løsningen til også at være ikke reference-dependent
 
+    #@njit(cache=True)
     def benefit_path_(self):                # vi laver income paths som en T, array med alle income levels for forskellige perioder
         '''
         Returns the benefit path given parameter values.
@@ -177,7 +150,7 @@ class ref_inc_path():
         benefits[self.T3:self.T]  = self.welfare
 
         return benefits
-    
+    #@njit(cache=True)
     def income_path_(self):                          
         '''Laver alle de mulige income paths. 
             En for alle tidspunkter hvorpå man finder et job, inklusiv muligheden for aldrig at finde et job
@@ -187,7 +160,7 @@ class ref_inc_path():
         for j in np.arange(self.T): 
             income_path[j,j:] = self.w
         return income_path
-    
+    #@njit(cache=True)
     def ref_path_(self):             # the reference point is given as the arithmetic average of the income in the 5 periods leading up to the current one. 
         if self.eta > 0: 
             ref_path = np.zeros((self.T+1, self.T))
@@ -216,7 +189,7 @@ class ref_inc_path():
             
         return ref_path
          
-        
+    #@njit(cache=True)    
     def ref_path_long_(self):        # we create this to get the future values of ref-dependence when getting a job inside T-N last periods.
             
         add = np.zeros( (self.T+1, self.N)  )
@@ -242,7 +215,6 @@ class ref_inc_path():
 
 class ss_value:
     """Class to implement the stochastic cake eating model with discretized choice"""
-
     def __init__(self, delta=0.9, eta = 1, lmbda = 4.9, abar=[0, 20], n_a=50, n_c=100, w=15, R = 0.05 ):
         """Initializer"""
         self.delta = delta    # Discount factor
@@ -266,6 +238,7 @@ class ss_value:
                                                                                         # så hver række repræsenterer alle consumption choices givet en state value. 
 
            #Bellman operator, V0 is one-dim vector of values on state grid                                 
+    #@njit(cache=True)
     def bellman(self, V0, R):           
         interp = interpolate.interp1d(self.a[:, 0], V0, bounds_error=False, fill_value="extrapolate")
         V = 0
@@ -282,8 +255,8 @@ class ss_value:
 
         return V1, c1
 
-
-def vfi(self, maxiter=1000, tol=1e-15, callback=None):
+#@njit(cache=True)
+def vfi(self, maxiter=1000, tol=1e-8, callback=None): # machine precision 1e-15
     """Solves the model using VFI (successive approximations)"""
     tic = process_time()  # Start the stopwatch / counter
 
@@ -313,7 +286,9 @@ ss_value.solve = vfi
 # We solve primarily for value of unemployment and search effort
 #########################################################################################
 
-def SolveModel(delta, gamma, eta, k, lmbda, abar, n_a, n_c, T1, T2, T3, T, N, b1, b2, b3, welfare, w, R ):
+#def SolveModel(delta, gamma, eta, k, lmbda, abar, n_a, n_c, T1, T2, T3, T, N, b1, b2, b3, welfare, w, R ):
+#@njit(cache=True)
+def SolveModel(params, institutions, abar):
     '''
     Returns the value of the optimal search effort.
         Arguments:
@@ -326,6 +301,19 @@ def SolveModel(delta, gamma, eta, k, lmbda, abar, n_a, n_c, T1, T2, T3, T, N, b1
             search (float): Value of the optimal search effort.
     '''
     #Steady State Values for employment and unemployment
+
+    delta, gamma, eta, k, lmbda, N = params
+    n_a, n_c, T1, T2, T3, T, b1, b2, b3, welfare, w, R = institutions
+
+      # Integer parameters
+    N = int(N)
+    n_a = int(n_a)
+    n_c = int(n_c)
+    T1 = int(T1)
+    T2 = int(T2)
+    T3 = int(T3)
+    T = int(T)
+
     emp = ss_value(delta, eta, lmbda, abar.copy(), n_a, n_c, w, R,)
     Vss_emp, css_emp = emp.solve()
     uemp = ss_value(delta, eta, lmbda, abar.copy(), n_a, n_c, welfare, R,)
@@ -413,4 +401,124 @@ def SolveModel(delta, gamma, eta, k, lmbda, abar, n_a, n_c, T1, T2, T3, T, N, b1
          survival[:,t] = survival[:,t-1] * (1-S[:,t-1])
 
     return S, V_emp, V_uemp, c_emp, c_uemp, Vss_emp, Vss_uemp, css_emp, css_uemp, survival, benefits
-                
+
+#@njit(cache=True)
+def simulate_moments(params, institutions_pre, institutions_post, abar, weights):
+
+    # Simulate Model
+    S_pre, V_emp_pre, V_unemp_pre, c_emp_pre, c_unemp_pre, Vss_emp_pre, Vss_uemp_pre, css_emp_pre, css_uemp_pre, survival_pre, benefits_pre      = \
+        SolveModel(params,institutions_pre, abar)
+
+    S_post, V_emp_post, V_unemp_post, c_emp_post, c_unemp_post, Vss_emp_post, Vss_uemp_post, css_emp_post, css_uemp_post, survival_post, benefits_post = \
+        SolveModel(params,institutions_post, abar)
+
+    # Return Moments
+    moments_pre = weights @ S_pre[:,:35]
+   
+    moments_post = weights @ S_post[:,:35]
+
+
+    
+
+    moments_model = np.hstack((moments_pre, moments_post))
+    
+
+    return moments_model
+#@njit(cache=True)
+def sse(params, target, W, institutions_pre, institutions_post, abar, weights):
+    simmoments = simulate_moments(params, institutions_pre, institutions_post, abar, weights)
+
+    # Deviations between target moments and simulated moments:
+    err= target - simmoments
+    # Calculate SSE
+    SSEval = err.T @ W @ err
+
+    return SSEval
+
+
+
+#@njit(cache=True)
+def matchingMoments():
+
+    
+    momentsfile = './base_moments_Hungary.xlsx'
+    
+
+    moments_df  = pd.read_excel(momentsfile, index_col=0)
+    moments_hazard_pre = moments_df['before_b'].to_numpy()
+    moments_hazard_post = moments_df['after_b'].to_numpy()
+    moments_hazard_pre = moments_hazard_pre[1:]
+    moments_hazard_post = moments_hazard_post[1:]
+
+    target = np.hstack((moments_hazard_pre,moments_hazard_post))
+
+    # Covariance Matrix:
+    sd_pre  = moments_df['before_sd'].to_numpy()[1:]
+    sd_post = moments_df['after_sd'].to_numpy()[1:]
+    var_pre = sd_pre**2
+    var_post = sd_post**2
+    var = np.hstack((var_pre,var_post))
+    cov = np.eye(len(var))*var
+
+    return target, cov
+
+class smm:
+    def __init__(self, params_full, target, W, institutions_pre, institutions_post, abar, weights, disp=False):
+        self.iter = 0
+        self.params_full = params_full
+        self.target = target
+        self.W = W
+        self.institutions_pre = institutions_pre
+        self.institutions_post = institutions_post
+        self.abar = abar
+        self.weights = weights
+        self.disp = disp
+        self.L = np.linalg.cholesky(W)
+
+    def sse(self,params):
+        # Deviations between target moments and simulated moments:
+        self.params_full.update(params)
+        params_full_vec = np.array(self.params_full['value'])
+        simmoments = simulate_moments(params_full_vec, self.institutions_pre, self.institutions_post, self.abar, self.weights)
+
+        # Deviations between target moments and simulated moments:
+        err= self.target - simmoments
+        # Calculate SSE
+        SSEval = err.T @ self.W @ err
+
+        self.iter = self.iter+1
+        if self.disp:
+            print('Iter: {:.0f}; Current SSE: {:10.3f}'.format(self.iter, sse))
+
+        return SSEval
+    @njit(cache=True)
+    def criterion(self,params):
+        # Deviations between target moments and simulated moments:
+        self.params_full.update(params)
+        params_full_vec = np.array(self.params_full['value'])
+        simmoments = simulate_moments(params_full_vec, self.institutions_pre, self.institutions_post, self.abar, self.weights)
+
+        # Deviations between target moments and simulated moments:
+        err= self.target - simmoments
+        # Calculate SSE
+        # SSEval = err.T @ self.W @ err
+
+        #L = np.linalg.cholesky(self.W)
+        weighted_residuals = err @ L
+
+        weighted_residuals_squared = weighted_residuals**2
+        sse = weighted_residuals_squared.sum()
+        out = {
+            # root_contributions are the least squares residuals.
+            # if you square and sum them, you get the criterion value
+            "root_contributions": weighted_residuals,
+            # if you sum up contributions, you get the criterion value
+            "contributions": weighted_residuals_squared,
+            # this is the standard output
+            "value": sse,
+        }
+        self.iter = self.iter+1
+        if self.disp:
+            print('Iter: {:.0f}; Current SSE: {:10.3f}'.format(self.iter, sse))
+
+        return out

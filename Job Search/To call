@@ -1,0 +1,144 @@
+########################################################################### 
+##################### We import the needed packages #######################
+import numpy as np
+from time import process_time
+import matplotlib.pyplot as plt
+import scipy
+from scipy import interpolate  # type: ignore # Interpolation routines
+from matplotlib.gridspec import GridSpec
+
+########################################################################### 
+######################## We determine parameters ##########################
+
+# we determine the values such that they are only determined here and then we won't mess them up
+params = dict(
+    delta=0.93, gamma=0.9, eta=1, k=300, lmbda=4.9,
+    
+    n_a=100, n_c=150, abar=[0,10000],
+
+    T1=6, T2=18, T3=24, T=44, N=6,
+    
+    b1=222, b2=222, b3=114, welfare=90, w=675, R=0.01
+)
+
+# params welfare is only to be used for the value function iterations of the infinite horizon case, because then we don't have to alter the code. 
+params_welfare = dict(
+    delta=0.93, gamma=0.9, eta=1, k=300, lmbda=4.9,
+    
+    n_a=100, n_c=150, abar=[0,10000],
+    
+    T1=6, T2=18, T3=24, T=44, N=6,
+    
+    b1=222, b2=222, b3=114, welfare=90, w=90, R=0.01
+)
+
+#########################################################################################
+# Class for determining the reference path through the income path/benefit path
+
+class ref_inc_path():
+    def __init__(self,w =15, b1=10, b2 = 8, b3 = 6, welfare = 4, T1 = 12, T2 = 36, T3 = 48, T = 54, N = 5, eta = 1 ):
+        self.w = w              # Løn
+        self.b1 = b1            # højeste dagpengesats    
+        self.b2 = b2            # næste dagepengesats
+        self.b3 = b3            # laveste dagpengesats
+        self.welfare = welfare  # 'kontanthjælp'
+        self.T1 = T1            # periode til højeste dagpengesats
+        self.T2 = T2            # periode til næste dagpengesats
+        self.T3 = T3            # periode til laveste dagpengesats
+        self.T = T              # periode til kontanthjælp
+        self.N = N              # antal referenceperioder
+        self.eta = eta          # det er for at kunne modificere løsningen til også at være ikke reference-dependent
+
+    def benefit_path_(self):                # vi laver income paths som en T, array med alle income levels for forskellige perioder
+        '''
+        Returns the benefit path given parameter values.
+            Arguments:
+                b1,b2,b3,welfare (all floats): values at distinct time windows during unemployment
+                T1,T2,T3 (int): points in Unemp. spell when benefit levels change.
+                T (int): Total number of periods
+            Returns:
+                benefits (array): Benefit path in unemployment
+        '''
+        benefits        = np.zeros(self.T)       # Laver en vektor med T, elementer. 
+        benefits[0:self.T1]  = self.b1                # for de rigtige tidspunkter tilføjer den benefit levels. 
+        benefits[self.T1:self.T2] = self.b2
+        benefits[self.T2:self.T3] = self.b3
+        benefits[self.T3:self.T]  = self.welfare
+
+        return benefits
+    
+    def income_path_(self):                          
+        '''Laver alle de mulige income paths. 
+            En for alle tidspunkter hvorpå man finder et job, inklusiv muligheden for aldrig at finde et job
+        '''
+        benefits = self.benefit_path_()
+        income_path = np.tile(benefits,(self.T+1,1))
+        for j in np.arange(self.T): 
+            income_path[j,j:] = self.w
+        return income_path
+    
+    def ref_path_(self):             # the reference point is given as the arithmetic average of the income in the 5 periods leading up to the current one. 
+        if self.eta > 0: 
+            ref_path = np.zeros((self.T+1, self.T))
+            income_path = self.income_path_()
+        
+            for t in np.arange(self.T): 
+                if t == 0:
+                    ref_path[:,t] = self.w         # vi antager at lønnen før og lønnen efter bistand er den samme. 
+
+                if t > 0: 
+                    N_pre = max(self.N - t, 0)  # vi sætter antal perioder med løn til at blive mindre, når man har været længere tid på DP. Indtil løn slet ikke indgår i referencen. 
+                    '''Her modificerer jeg koden ned i kompleksitet, så vi ikke tager højde for eventuelle halve perioder. 
+                    Da vi slet ikke har dem med. Se rdmodel.py, for den komplekse udgave'''
+                    start = max(t-self.N, 0)
+                    end = t
+                        #Her laver vi summen / gennemsnittet. 
+                        #Når t > 4 så betyder N_pre leddet ikke længere noget.
+                    ref_path[:,t] = ( N_pre*self.w + np.sum(income_path[:,start:end], axis = 1, keepdims=False ) ) / self.N
+            
+                    # reference path tager gennemsnittet for de seneste fem perioder af indkomst for alle rækker i income path.
+                    # så altid summen af de t-5 til t søjler i income path plus evt. led fra før dagpenge, hvis vi er i t < 5
+                    # axis = 1 betyder at vi kigger på søjler keepdims = False betyder at vi kun returner en vektor med t værdier pr. række.
+                    # så hver række i income path repræsenterer, hvornår man får job. Hver række i r repræsenterer den dertilhørende lønreference i alle perioder. 
+        else: 
+            ref_path = self.income_path_()    
+            
+        return ref_path
+         
+        
+    def ref_path_long_(self):        # we create this to get the future values of ref-dependence when getting a job inside T-N last periods.
+            
+        add = np.zeros( (self.T+1, self.N)  )
+
+        ref_path = self.ref_path_()
+        ref_path_long = np.concatenate((ref_path, add), axis = 1)      # now we add N columns to the ref_path_
+            
+        income_path = self.income_path_()       # we add the income path to use it later
+
+        for t in np.arange(self.T, self.T + self.N):
+                
+            start = min ( t - self.N , self.T)      # vi definerer start som den periode vi er i og minus de N perioder vi kigger tilbage. Vi går indtil sidste periode i income_path
+            end = self.T                            # det her er måske overflødigt, fordi vi bare siger, at vi stopper ved enden. 
+
+            ref_path_long[:,t] = (  np.sum(income_path[:,start:], axis = 1, keepdims=False     )   + (t-self.T)* self.w ) / self.N 
+                                        # so what the code does is that it takes the sum of the last periods available in the income path
+                                        # plus the sum of the periods not available and divides by N to get the average.                                  
+        """ændrer den sidste række til blot at være den samme som den var før men 5 perioder mere, fordi han aldrig får et job. """
+        
+        ref_path_long[-1,self.T] = self.welfare
+        return ref_path_long
+
+
+#########################################################################################
+# We make the gain-loss function
+def u(c, r, eta, lmbda):        # returns the utility of current consumption + the gain_loss parameter
+
+    gainloss = np.where(
+        c > r,
+        eta * (np.log(c) - np.log(r)),
+        eta * lmbda * (np.log(c) - np.log(r))
+    )
+
+    return np.log(c) + gainloss
+
+        

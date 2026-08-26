@@ -326,9 +326,9 @@ def SolveModel(delta, gamma, eta, k, lmbda, abar, n_a, n_c, T1, T2, T3, T, N, b1
             search (float): Value of the optimal search effort.
     '''
     #Steady State Values for employment and unemployment
-    emp = ss_value(delta, abar.copy(), n_a, n_c, w, R, w, eta, lmbda)
+    emp = ss_value(delta, eta, lmbda, abar.copy(), n_a, n_c, w, R,)
     Vss_emp, css_emp = emp.solve()
-    uemp = ss_value(delta, abar.copy(), n_a, n_c, welfare, R, welfare, eta, lmbda)
+    uemp = ss_value(delta, eta, lmbda, abar.copy(), n_a, n_c, welfare, R,)
     Vss_uemp, css_uemp = uemp.solve()
 
     # Income paths

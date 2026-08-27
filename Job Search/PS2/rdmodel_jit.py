@@ -148,6 +148,7 @@ def steady_state_Vu(Ve, k, gamma, delta, benefits):
     return Vu # np.array([Vu])
 
 # UI benefit level b as function of time
+
 def benefit_path(b1,b2,b3,welfare,T1,T2,T3,T):
     '''
     Returns the benefit path given parameter values.

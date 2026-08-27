@@ -402,6 +402,12 @@ def SolveModel(params, institutions, abar):
 
     return S, V_emp, V_uemp, c_emp, c_uemp, Vss_emp, Vss_uemp, css_emp, css_uemp, survival, benefits
 
+
+#########################################################################################
+#########################################################################################
+# HERE WE ESTIMATE THE MODEL PARAMETERS USING SIMULATED METHOD OF MOMENTS
+#########################################################################################
+
 #@njit(cache=True)
 def simulate_moments(params, institutions_pre, institutions_post, abar, weights):
 
@@ -424,17 +430,6 @@ def simulate_moments(params, institutions_pre, institutions_post, abar, weights)
     
 
     return moments_model
-#@njit(cache=True)
-def sse(params, target, W, institutions_pre, institutions_post, abar, weights):
-    simmoments = simulate_moments(params, institutions_pre, institutions_post, abar, weights)
-
-    # Deviations between target moments and simulated moments:
-    err= target - simmoments
-    # Calculate SSE
-    SSEval = err.T @ W @ err
-
-    return SSEval
-
 
 
 #@njit(cache=True)
@@ -462,16 +457,28 @@ def matchingMoments():
 
     return target, cov
 
+
+#@njit(cache=True)
+def sse(params, target, W, institutions_pre, institutions_post, abar, weights):
+    simmoments = simulate_moments(params, institutions_pre, institutions_post, abar, weights)
+
+    # Deviations between target moments and simulated moments:
+    err= target - simmoments
+    # Calculate SSE
+    SSEval = err.T @ W @ err
+
+    return SSEval
+
 class smm:
     def __init__(self, params_full, target, W, institutions_pre, institutions_post, abar, weights, disp=False):
         self.iter = 0
         self.params_full = params_full
         self.target = target
-        self.W = W
+        self.W = W # Covariance matrix, the weighting matrix for the GMM estimation.
         self.institutions_pre = institutions_pre
         self.institutions_post = institutions_post
         self.abar = abar
-        self.weights = weights
+        self.weights = weights  # weighting of asset distribution
         self.disp = disp
         self.L = np.linalg.cholesky(W)
 
@@ -504,7 +511,7 @@ class smm:
         # SSEval = err.T @ self.W @ err
 
         #L = np.linalg.cholesky(self.W)
-        weighted_residuals = err @ L
+        weighted_residuals = err @ self.L
 
         weighted_residuals_squared = weighted_residuals**2
         sse = weighted_residuals_squared.sum()

@@ -498,7 +498,7 @@ class smm:
             print('Iter: {:.0f}; Current SSE: {:10.3f}'.format(self.iter, sse))
 
         return SSEval
-    @njit(cache=True)
+    
     def criterion(self,params):
         # Deviations between target moments and simulated moments:
         self.params_full.update(params)

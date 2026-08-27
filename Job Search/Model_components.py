@@ -268,7 +268,7 @@ def vfi(self, maxiter=1000, tol=1e-8, callback=None): # machine precision 1e-15
             callback(iter, self.a, V1, c1)  # callback for making plots
         if np.all(abs(V1 - V0) < tol):
             toc = process_time()  # Stop the stopwatch / counter
-            print("Optimal consumption of assets solved in", iter, "iterations, using", round(toc - tic, 5), "seconds")
+            #print("Optimal consumption of assets solved in", iter, "iterations, using", round(toc - tic, 5), "seconds")
             break
         V0 = V1
     else:  # when i went up to maxiter

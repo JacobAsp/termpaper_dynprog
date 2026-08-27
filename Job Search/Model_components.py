@@ -405,8 +405,16 @@ def SolveModel(params, institutions, abar):
 
 #########################################################################################
 #########################################################################################
-# HERE WE ESTIMATE THE MODEL PARAMETERS USING SIMULATED METHOD OF MOMENTS
+# DOWN FROM HERE THE FUNCTIONS AND CLASS ARE USED TO ESTIMATE THE MODEL PARAMETERS 
+# USING SIMULATED METHOD OF MOMENTS
 #########################################################################################
+
+
+
+#########################################################################################
+# This function simulates the moments given our model, the parameters and our weighting matrix.  
+# So these moments are the 'simulated fake' ones. 
+
 
 #@njit(cache=True)
 def simulate_moments(params, institutions_pre, institutions_post, abar, weights):
@@ -423,22 +431,18 @@ def simulate_moments(params, institutions_pre, institutions_post, abar, weights)
    
     moments_post = weights @ S_post[:,:35]
 
-
-    
-
     moments_model = np.hstack((moments_pre, moments_post))
     
-
     return moments_model
 
+#########################################################################################
+# Here we load the observed moments from the Hungarian data set given by DellaVigna et al
 
 #@njit(cache=True)
 def matchingMoments():
 
-    
     momentsfile = './base_moments_Hungary.xlsx'
     
-
     moments_df  = pd.read_excel(momentsfile, index_col=0)
     moments_hazard_pre = moments_df['before_b'].to_numpy()
     moments_hazard_post = moments_df['after_b'].to_numpy()
@@ -458,6 +462,10 @@ def matchingMoments():
     return target, cov
 
 
+#########################################################################################
+# This function finds the sum of squared errors between the simulated moments and the observed moments. 
+# this is done with already given parameter values which we use as a starting point to estimate the parameters. 
+
 #@njit(cache=True)
 def sse(params, target, W, institutions_pre, institutions_post, abar, weights):
     simmoments = simulate_moments(params, institutions_pre, institutions_post, abar, weights)
@@ -468,6 +476,11 @@ def sse(params, target, W, institutions_pre, institutions_post, abar, weights):
     SSEval = err.T @ W @ err
 
     return SSEval
+
+
+#########################################################################################
+# This class is used to iterate over candidate parameters.  
+# We call this with a minimizer to find the parameters that minimize the SSE. 
 
 class smm:
     def __init__(self, params_full, target, W, institutions_pre, institutions_post, abar, weights, disp=False):

@@ -369,7 +369,7 @@ ss_value.solve = vfi
 
 #def SolveModel(delta, gamma, eta, k, lmbda, abar, n_a, n_c, T1, T2, T3, T, N, b1, b2, b3, welfare, w, R ):
 #@njit(cache=True)
-def SolveModel(params, institutions, abar), htm:
+def SolveModel(params, institutions, abar, htm):
     '''
     Returns the value of the optimal search effort.
         Arguments:

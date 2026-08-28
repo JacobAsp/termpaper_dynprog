@@ -522,14 +522,14 @@ def SolveModel(params, institutions, abar, htm):
 # So these moments are the 'simulated fake' ones. 
 
 #@njit(cache=True)
-def simulate_moments(params, institutions_pre, institutions_post, abar, weights):
+def simulate_moments(params, institutions_pre, institutions_post, abar, weights, htm):
 
     # Simulate Model
     S_pre, V_emp_pre, V_unemp_pre, c_emp_pre, c_unemp_pre, Vss_emp_pre, Vss_uemp_pre, css_emp_pre, css_uemp_pre, survival_pre, benefits_pre      = \
-        SolveModel(params,institutions_pre, abar)
+        SolveModel(params,institutions_pre, abar, htm)
 
     S_post, V_emp_post, V_unemp_post, c_emp_post, c_unemp_post, Vss_emp_post, Vss_uemp_post, css_emp_post, css_uemp_post, survival_post, benefits_post = \
-        SolveModel(params,institutions_post, abar)
+        SolveModel(params,institutions_post, abar, htm)
 
     # Return Moments
     moments_pre = weights @ S_pre[:,:35]
@@ -577,8 +577,8 @@ def matchingMoments():
 # this is done with already given parameter values which we use as a starting point to estimate the parameters. 
 
 #@njit(cache=True)
-def sse(params, target, W, institutions_pre, institutions_post, abar, weights):
-    simmoments = simulate_moments(params, institutions_pre, institutions_post, abar, weights)
+def sse(params, target, W, institutions_pre, institutions_post, abar, weights, htm):
+    simmoments = simulate_moments(params, institutions_pre, institutions_post, abar, weights, htm)
 
     # Deviations between target moments and simulated moments:
     err= target - simmoments
@@ -592,7 +592,7 @@ def sse(params, target, W, institutions_pre, institutions_post, abar, weights):
 # We call this with a minimizer to find the parameters that minimize the SSE. 
 
 class smm:
-    def __init__(self, params_full, target, W, institutions_pre, institutions_post, abar, weights, disp=False):
+    def __init__(self, params_full, target, W, institutions_pre, institutions_post, abar, weights, htm, disp=False):
         self.iter = 0
         self.params_full = params_full
         self.target = target
@@ -603,12 +603,13 @@ class smm:
         self.weights = weights  # weighting of asset distribution
         self.disp = disp
         self.L = np.linalg.cholesky(W)
+        self.htm = htm
 
     def sse(self,params):
         # Deviations between target moments and simulated moments:
         self.params_full.update(params)
         params_full_vec = np.array(self.params_full['value'])
-        simmoments = simulate_moments(params_full_vec, self.institutions_pre, self.institutions_post, self.abar, self.weights)
+        simmoments = simulate_moments(params_full_vec, self.institutions_pre, self.institutions_post, self.abar, self.weights, self.htm)
 
         # Deviations between target moments and simulated moments:
         err= self.target - simmoments
@@ -625,7 +626,7 @@ class smm:
         # Deviations between target moments and simulated moments:
         self.params_full.update(params)
         params_full_vec = np.array(self.params_full['value'])
-        simmoments = simulate_moments(params_full_vec, self.institutions_pre, self.institutions_post, self.abar, self.weights)
+        simmoments = simulate_moments(params_full_vec, self.institutions_pre, self.institutions_post, self.abar, self.weights, self.htm)
 
         # Deviations between target moments and simulated moments:
         err= self.target - simmoments

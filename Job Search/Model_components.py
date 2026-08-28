@@ -338,6 +338,27 @@ class ss_value:
 #@njit(cache=True)
 def vfi(self, maxiter=1000, tol=1e-8, callback=None): # machine precision 1e-15
     """Solves the model using VFI (successive approximations)"""
+    # ---------------------------------------------------------------------
+    # Hand-To-Mouth Model: 
+    # ---------------------------------------------------------------------
+    if self.htm == 1:
+        c1 = np.array([self.w])
+
+        V1 = np.array([
+            u(
+                self.w,
+                self.w,
+                self.eta,
+                self.lmbda
+            ) / (1 - self.delta)
+        ])
+
+        return V1, c1
+    
+    # ---------------------------------------------------------------------
+    # Model with Assets: 
+    # ---------------------------------------------------------------------
+
     tic = process_time()  # Start the stopwatch / counter
 
     V0 = np.log(self.a[:, 0])  # on first iteration assume consuming everything
@@ -526,12 +547,13 @@ def simulate_moments(params, institutions_pre, institutions_post, abar, weights,
 
     # Simulate Model
     S_pre, V_emp_pre, V_unemp_pre, c_emp_pre, c_unemp_pre, Vss_emp_pre, Vss_uemp_pre, css_emp_pre, css_uemp_pre, survival_pre, benefits_pre      = \
-        SolveModel(params,institutions_pre, abar, htm)
+        SolveMultiTypeModel(params,institutions_pre, abar, htm)
 
     S_post, V_emp_post, V_unemp_post, c_emp_post, c_unemp_post, Vss_emp_post, Vss_uemp_post, css_emp_post, css_uemp_post, survival_post, benefits_post = \
-        SolveModel(params,institutions_post, abar, htm)
+        SolveMultiTypeModel(params,institutions_post, abar, htm)
 
     # Return Moments
+
     moments_pre = weights @ S_pre[:,:35]
    
     moments_post = weights @ S_post[:,:35]
@@ -652,3 +674,125 @@ class smm:
             print('Iter: {:.0f}; Current SSE: {:10.3f}'.format(self.iter, sse))
 
         return out
+
+
+
+def SolveMultiTypeModel(params,institutions, abar, htm):
+    '''
+    Solves the retirement model in a multi-type setup.
+        Arguments:
+            params (array): Array of parameter values for all types.
+        Returns:
+    '''
+    if hasattr(params, "columns") and "value" in params.columns:
+        params_vec = params["value"].to_numpy()
+    else:
+        params_vec = np.asarray(params).ravel()
+
+    if len(params_vec)==6:
+        delta, gamma, eta, k1, lmbda, N = params_vec
+        kvals = [k1]
+        shares = np.array([1.0])
+
+    # Variables for 2-type estimation
+    elif len(params_vec)==8:
+        delta, gamma, eta,k1, lmbda, N, k2, q1 = params_vec
+        kvals = [k1, k2]
+        shares = np.array([q1, 1-q1])
+
+    # Variables for 3-type estimation
+    elif len(params_vec)==10:
+        delta, gamma, eta, k1, lmbda, N, k2, k3, q1, q2 = params_vec
+        kvals = [k1, k2, k3]
+        shares = np.array([q1, q2, 1-q1-q2] )
+        
+
+    else:
+        raise ValueError('Number of types not supported. Please use 1, 2 or 3 types.')
+        
+
+    # Validity Check
+    if np.any(shares < 0):
+        raise ValueError("Type shares must be non-negative.")
+    
+    if not np.isclose(shares.sum(), 1.0):
+        raise ValueError("Type shares must sum to 1.")
+
+    # htm is already in institutions
+    n_a = int(institutions[0])
+
+    weights = make_weights(
+        htm,
+        abar,
+        n_a
+    )
+    #------------------------------------------------------------------
+    # SOLVE THE MODEL FOR EACH TYPE
+    #------------------------------------------------------------------ 
+    
+    S_types = []
+    V_emp_types = []
+    V_uemp_types = []
+    c_emp_types = []
+    c_uemp_types = []
+
+    Vss_emp_types = []
+    Vss_uemp_types = []
+    css_emp_types = []
+    css_uemp_types = []
+    survival_types = []
+
+    benefits_out = None
+    
+
+    for k_j in kvals:
+        params_j = np.array([delta, gamma, eta, k_j, lmbda, N]) 
+        S, V_emp, V_uemp, c_emp, c_uemp, Vss_emp, Vss_uemp, css_emp, css_uemp, survival, benefits = SolveModel(params_j, institutions, abar, htm)
+        S_types.append(S)
+        V_emp_types.append(V_emp)
+        V_uemp_types.append(V_uemp)
+        c_emp_types.append(c_emp)
+        c_uemp_types.append(c_uemp)
+
+        Vss_emp_types.append(Vss_emp)
+        Vss_uemp_types.append(Vss_uemp)
+        css_emp_types.append(css_emp)
+        css_uemp_types.append(css_uemp)
+
+        survival_types.append(survival)
+
+        benefits_out = benefits
+        
+
+    #------------------------------------------------------------------
+    # Aggregate survival across types
+    #------------------------------------------------------------------
+    survival_agg = np.zeros_like(survival_types[0])
+
+    for j in range(len(kvals)):
+
+        # Weight type j by its population share,
+        # but preserve all asset states
+        survival_agg += shares[j] * survival_types[j]
+
+    #------------------------------------------------------------------
+    # Aggregate hazard
+    #------------------------------------------------------------------
+    s_agg = np.zeros_like(survival_agg)
+    Tplus1 = survival_agg.shape[1]
+
+    for t in range(Tplus1 - 1):
+
+        # Which asset states still have meaningful survival mass?
+        valid = survival_agg[:, t] > 1e-7
+
+        s_agg[valid, t] = (
+            survival_agg[valid, t]
+            - survival_agg[valid, t + 1]
+        ) / survival_agg[valid, t]
+
+
+    # Last period: copy previous hazard
+    s_agg[:, -1] = s_agg[:, -2]
+
+    return s_agg, V_emp_types, V_uemp_types, c_emp_types, c_uemp_types, Vss_emp_types, Vss_uemp_types, css_emp_types, css_uemp_types, survival_agg, benefits_out

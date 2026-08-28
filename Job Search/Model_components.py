@@ -369,7 +369,7 @@ ss_value.solve = vfi
 
 #def SolveModel(delta, gamma, eta, k, lmbda, abar, n_a, n_c, T1, T2, T3, T, N, b1, b2, b3, welfare, w, R ):
 #@njit(cache=True)
-def SolveModel(params, institutions, abar):
+def SolveModel(params, institutions, abar), htm:
     '''
     Returns the value of the optimal search effort.
         Arguments:
@@ -383,7 +383,7 @@ def SolveModel(params, institutions, abar):
     '''
     # Unpack parameters and institutions
     delta, gamma, eta, k, lmbda, N = params
-    n_a, n_c, T1, T2, T3, T, b1, b2, b3, welfare, w, R, htm = institutions
+    n_a, n_c, T1, T2, T3, T, b1, b2, b3, welfare, w, R = institutions
 
     # Integer parameters
     N = int(N)
@@ -393,7 +393,7 @@ def SolveModel(params, institutions, abar):
     T2 = int(T2)
     T3 = int(T3)
     T = int(T)
-    htm = int(htm)
+    
 
     # Effective dimensions of the model
     if htm == 1:

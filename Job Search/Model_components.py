@@ -215,7 +215,7 @@ class ref_inc_path():
 
 class ss_value:
     """Class to implement the stochastic cake eating model with discretized choice"""
-    def __init__(self, delta=0.9, eta = 1, lmbda = 4.9, abar=[0, 20], n_a=50, n_c=100, w=15, R = 0.05 ):
+    def __init__(self, delta=0.9, eta = 1, lmbda = 4.9, abar=[0, 20], n_a=50, n_c=100, w=15, R = 0.05, htm = 0, ):
         """Initializer"""
         self.delta = delta    # Discount factor
         self.eta = eta      # gain-loss value parameter
@@ -225,35 +225,70 @@ class ss_value:
         self.n_c = n_c      # grid size for choice grid
         self.w = w          # wage
         self.R = R          # interest rate
+        self.htm = htm
 
-        self.abar[0] = np.maximum(np.finfo(float).eps, self.abar[0])       # vælger den højeste værdi af minimumsværdien for abar og 'numerisk 0'. Vi vil ikke under numerisk 0.  
+        if self.htm == 1:
+            # Hand to mouth: Only one asset state - A = 0
+            self.n_a = 1
+            self.n_c = 1
+
+            self.a = np.array([[0.0]])
+            self.c = np.array([[self.w]])
+        else:
+            self.abar[0] = np.maximum(np.finfo(float).eps, self.abar[0])
+            self.a = np.linspace(self.abar[0], self.abar[1], n_a).reshape((n_a, 1))
+            self.c = np.empty((n_a, n_c))
+            for i in range(n_a):            # fordi rækkerne er state-grids, så derfor skal vi have en række for hver state vi vil kigge på
+                self.c[i, :] = np.linspace(self.abar[0], self.a[i,0]+self.w, n_c) #.reshape((1, n_c)) 
+
+        #self.abar[0] = np.maximum(np.finfo(float).eps, self.abar[0])       # vælger den højeste værdi af minimumsværdien for abar og 'numerisk 0'. Vi vil ikke under numerisk 0.  
         # truncate lower bound at smallest positive float number
         # parameter dependent varibles
-        self.a = np.linspace(self.abar[0], self.abar[1], n_a).reshape((n_a, 1))  # vi laver en vektor med state space fra 0 til abar og med det antal grid punkter vi vil have, n_a.  
-        self.c = np.empty((n_a, n_c))  # starter consumption matrix med rækker for alle states og så et finere grid i kolonnerne for mulige consumption valg. 
+        #self.a = np.linspace(self.abar[0], self.abar[1], n_a).reshape((n_a, 1))  # vi laver en vektor med state space fra 0 til abar og med det antal grid punkter vi vil have, n_a.  
+        #self.c = np.empty((n_a, n_c))  # starter consumption matrix med rækker for alle states og så et finere grid i kolonnerne for mulige consumption valg. 
         
-        for i in range(n_a):            # fordi rækkerne er state-grids, så derfor skal vi have en række for hver state vi vil kigge på
-            self.c[i, :] = np.linspace(self.abar[0], self.a[i]+self.w, n_c).reshape((1, n_c))  # vi laver hver række så den går fra '0' til den værdi i state grid, som vi kigger på. Altså, det vil svare til at vi kigger på alle mulige værdier for V(A=10)
+        #for i in range(n_a):            # fordi rækkerne er state-grids, så derfor skal vi have en række for hver state vi vil kigge på
+        #    self.c[i, :] = np.linspace(self.abar[0], self.a[i]+self.w, n_c).reshape((1, n_c))  # vi laver hver række så den går fra '0' til den værdi i state grid, som vi kigger på. Altså, det vil svare til at vi kigger på alle mulige værdier for V(A=10)
                                                                                         # consumption choice bliver så lidt finere (det er kolonnerne her) og tager n_c grid points. 
                                                                                         # så hver række repræsenterer alle consumption choices givet en state value. 
 
            #Bellman operator, V0 is one-dim vector of values on state grid                                 
     #@njit(cache=True)
-    def bellman(self, V0, R):           
-        interp = interpolate.interp1d(self.a[:, 0], V0, bounds_error=False, fill_value="extrapolate")
-        V = 0
-        a1 = (self.a - self.c + self.w)*(1+R)       # vi laver a1 som funktion af hvad du forbruger     'a' er en 1 x n_a vektor
-        V = interp(a1)                              # a1 bliver en n_a x n_c matrix     V svarer til de 100 forskellige niveauer af nytte i næste periode
+    def bellman(self, V0, R):   
+
+        if self.htm == 1:
+            # No asset choice.
+             # A_t = A_{t+1} = 0 and c_t = income.
+            c1 = np.array([self.w])
+
+            V1 = (u(c1,self.w,self.eta,self.lmbda)+ self.delta * V0)
+            return V1, c1
+        else: 
+            interp = interpolate.interp1d(self.a[:, 0], V0, bounds_error=False, fill_value="extrapolate")
+            a1 = (self.a - self.c + self.w)*(1+R)
+            V = interp(a1)
+
+            matV1 = u(self.c, self.w, self.eta, self.lmbda ) + self.delta * V
+            i_max = np.argmax(matV1, axis=1)
+            V1 = matV1[np.arange(self.n_a), i_max]
+            c1 = self.c[np.arange(self.n_a), i_max]
+
+            return V1, c1
+
+        #interp = interpolate.interp1d(self.a[:, 0], V0, bounds_error=False, fill_value="extrapolate")
+        #V = 0
+        #a1 = (self.a - self.c + self.w)*(1+R)       # vi laver a1 som funktion af hvad du forbruger     'a' er en 1 x n_a vektor
+        #V = interp(a1)                              # a1 bliver en n_a x n_c matrix     V svarer til de 100 forskellige niveauer af nytte i næste periode
                                                     # a1 er en funktion af c (de andre er faste), så får vi en værdi som ligger mellem grid points ved at interpolere.
                                                     # der er ikke noget med nytte. Er det med vilje fordi den endelige værdi af V altid være den som maksimerer nytten?
-        matV1 = u(self.c, self.w, self.eta, self.lmbda ) + self.delta * V      # c er en n_a x n_c vektor   a er en na x 1 vektor a1 bliver så en n_a x n_c matrix. Det gør V så også 
+        #matV1 = u(self.c, self.w, self.eta, self.lmbda ) + self.delta * V      # c er en n_a x n_c vektor   a er en na x 1 vektor a1 bliver så en n_a x n_c matrix. Det gør V så også 
                                                     # så her lægges en n_a x n_c matrix til en n_a x n_c matrix, hvilket giver en n_a x n_c matrix.
-        i_max = np.argmax(matV1, axis=1)            # vi kigger på den kolonne som giver den højeste nytte for hver række. n_a x 1 matrix
+        #i_max = np.argmax(matV1, axis=1)            # vi kigger på den kolonne som giver den højeste nytte for hver række. n_a x 1 matrix
         # (column) index of optimal choices
-        V1 = matV1[np.arange(self.n_a), i_max]          # Her går den igennem alle n_a rækker, og finder den kolonne i hver række, som giver den højeste værdi. 
-        c1 = self.c[np.arange(self.n_a), i_max]         # den her viser, hvad det optimale forbrug så viste sig at være. 
+        #V1 = matV1[np.arange(self.n_a), i_max]          # Her går den igennem alle n_a rækker, og finder den kolonne i hver række, som giver den højeste værdi. 
+        #c1 = self.c[np.arange(self.n_a), i_max]         # den her viser, hvad det optimale forbrug så viste sig at være. 
 
-        return V1, c1
+        #return V1, c1
 
 #@njit(cache=True)
 def vfi(self, maxiter=1000, tol=1e-8, callback=None): # machine precision 1e-15
@@ -268,6 +303,7 @@ def vfi(self, maxiter=1000, tol=1e-8, callback=None): # machine precision 1e-15
             callback(iter, self.a, V1, c1)  # callback for making plots
         if np.all(abs(V1 - V0) < tol):
             toc = process_time()  # Stop the stopwatch / counter
+            #uncomment this if you want to see how long it takes to solve the model
             #print("Optimal consumption of assets solved in", iter, "iterations, using", round(toc - tic, 5), "seconds")
             break
         V0 = V1
@@ -415,7 +451,6 @@ def SolveModel(params, institutions, abar):
 # This function simulates the moments given our model, the parameters and our weighting matrix.  
 # So these moments are the 'simulated fake' ones. 
 
-
 #@njit(cache=True)
 def simulate_moments(params, institutions_pre, institutions_post, abar, weights):
 
@@ -431,8 +466,12 @@ def simulate_moments(params, institutions_pre, institutions_post, abar, weights)
    
     moments_post = weights @ S_post[:,:35]
 
+
+    
+
     moments_model = np.hstack((moments_pre, moments_post))
     
+
     return moments_model
 
 #########################################################################################
@@ -441,8 +480,10 @@ def simulate_moments(params, institutions_pre, institutions_post, abar, weights)
 #@njit(cache=True)
 def matchingMoments():
 
+    
     momentsfile = './base_moments_Hungary.xlsx'
     
+
     moments_df  = pd.read_excel(momentsfile, index_col=0)
     moments_hazard_pre = moments_df['before_b'].to_numpy()
     moments_hazard_post = moments_df['after_b'].to_numpy()
@@ -461,7 +502,6 @@ def matchingMoments():
 
     return target, cov
 
-
 #########################################################################################
 # This function finds the sum of squared errors between the simulated moments and the observed moments. 
 # this is done with already given parameter values which we use as a starting point to estimate the parameters. 
@@ -476,7 +516,6 @@ def sse(params, target, W, institutions_pre, institutions_post, abar, weights):
     SSEval = err.T @ W @ err
 
     return SSEval
-
 
 #########################################################################################
 # This class is used to iterate over candidate parameters.  

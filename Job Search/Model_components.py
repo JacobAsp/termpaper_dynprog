@@ -532,9 +532,9 @@ def simulate_moments(params, institutions_pre, institutions_post, abar, weights,
         SolveModel(params,institutions_post, abar, htm)
 
     # Return Moments
-    moments_pre = weights @ S_pre[:,:36]
+    moments_pre = weights @ S_pre[:,:35]
    
-    moments_post = weights @ S_post[:,:36]
+    moments_post = weights @ S_post[:,:35]
 
 
     
@@ -557,19 +557,15 @@ def matchingMoments():
     moments_df  = pd.read_excel(momentsfile, index_col=0)
     moments_hazard_pre = moments_df['before_b'].to_numpy()
     moments_hazard_post = moments_df['after_b'].to_numpy()
-    moments_hazard_pre = moments_hazard_pre[0:]
-    moments_hazard_post = moments_hazard_post[0:]
-    #moments_hazard_pre = moments_hazard_pre[1:]
-    #moments_hazard_post = moments_hazard_post[1:]
+    moments_hazard_pre = moments_hazard_pre[1:]
+    moments_hazard_post = moments_hazard_post[1:]
 
     target = np.hstack((moments_hazard_pre,moments_hazard_post))
 
     # Covariance Matrix:
-    #moments_hazard_pre = moments_hazard_pre[1:]
-    #moments_hazard_post = moments_hazard_post[1:]
-    sd_pre  = moments_df['before_sd'].to_numpy()[0:]
-    sd_post = moments_df['after_sd'].to_numpy()[0:]
-    var_pre = sd_pre**2
+    sd_pre  = moments_df['before_sd'].to_numpy()[1:]
+    sd_post = moments_df['after_sd'].to_numpy()[1:]
+    var_pre = sd_pre*2
     var_post = sd_post**2
     var = np.hstack((var_pre,var_post))
     cov = np.eye(len(var))*var

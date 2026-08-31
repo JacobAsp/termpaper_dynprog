@@ -70,8 +70,11 @@ def make_weights(htm, abar, n_a):
         edges[0] = 0
         edges[-1] = 1
 
-        alpha = 1.5
-        beta_param = 4.0
+        alpha = 0.5
+        beta_param = 1.7
+        # Large density near zero
+        # Monotonically declining overall
+        # Long right tail
 
         weights = np.diff(
             beta.cdf(edges, alpha, beta_param)

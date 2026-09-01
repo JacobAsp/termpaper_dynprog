@@ -70,7 +70,7 @@ def make_weights(htm, abar, n_a):
         edges[0] = 0
         edges[-1] = 1
 
-        alpha = 0.5
+        alpha = 0.3
         beta_param = 1.7
         # Large density near zero
         # Monotonically declining overall
@@ -556,12 +556,14 @@ def simulate_moments(params, institutions_pre, institutions_post, abar, weights,
         SolveMultiTypeModel(params,institutions_post, abar, htm)
 
     # Return Moments
-
-    moments_pre = weights @ S_pre[:,:35]
+    
+    # We exclude the first observed moment to avoid on job, job search. This is alligned with excluding the first moment in 'matching moments' 
+    # This means that we don't ever look at the hazard rate in period 1. 
+    moments_pre = weights @ S_pre[:,1:36]       
    
-    moments_post = weights @ S_post[:,:35]
+    moments_post = weights @ S_post[:,1:36]
 
-
+    
     
 
     moments_model = np.hstack((moments_pre, moments_post))

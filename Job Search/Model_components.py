@@ -218,7 +218,8 @@ class ref_inc_path():
             En for alle tidspunkter hvorpå man finder et job, inklusiv muligheden for aldrig at finde et job
         '''
         benefits = self.benefit_path_()
-        income_path = np.tile(benefits,(self.T+1,1))
+        income_path = np.tile(benefits, (self.T+1,1))
+
         for j in np.arange(self.T): 
             income_path[j,j:] = self.w
         return income_path
@@ -562,9 +563,6 @@ def simulate_moments(params, institutions_pre, institutions_post, abar, weights,
     moments_pre = weights @ S_pre[:,1:36]       
    
     moments_post = weights @ S_post[:,1:36]
-
-    
-    
 
     moments_model = np.hstack((moments_pre, moments_post))
     

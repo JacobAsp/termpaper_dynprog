@@ -560,9 +560,9 @@ def simulate_moments(params, institutions_pre, institutions_post, abar, weights,
     
     # We exclude the first observed moment to avoid on job, job search. This is alligned with excluding the first moment in 'matching moments' 
     # This means that we don't ever look at the hazard rate in period 1. 
-    moments_pre = weights @ S_pre[:,1:36]       
+    moments_pre = weights @ S_pre[:,0:35]       
    
-    moments_post = weights @ S_post[:,1:36]
+    moments_post = weights @ S_post[:,0:35]
 
     moments_model = np.hstack((moments_pre, moments_post))
     

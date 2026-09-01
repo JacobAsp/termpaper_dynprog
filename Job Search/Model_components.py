@@ -70,7 +70,7 @@ def make_weights(htm, abar, n_a):
         edges[0] = 0
         edges[-1] = 1
 
-        alpha = 0.5
+        alpha = 0.3
         beta_param = 1.7
         # Large density near zero
         # Monotonically declining overall
@@ -557,9 +557,9 @@ def simulate_moments(params, institutions_pre, institutions_post, abar, weights,
 
     # Return Moments
 
-    moments_pre = weights @ S_pre[:,:35]
+    moments_pre = weights @ S_pre[:,1:36]
    
-    moments_post = weights @ S_post[:,:35]
+    moments_post = weights @ S_post[:,1:36]
 
 
     

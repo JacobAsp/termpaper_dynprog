@@ -305,7 +305,7 @@ class ss_value:
         # ---------------------------------------------------------------------
         else:
             self.abar[0] = np.maximum(np.finfo(float).eps, self.abar[0])
-            self.a = np.linspace(self.abar[0], self.abar[1], n_a).reshape((n_a, 1))
+            self.a = np.linspace(self.abar[0], self.abar[1], n_a).reshape((n_a, 1))  
             self.c = np.empty((n_a, n_c))
             for i in range(n_a):            # fordi rækkerne er state-grids, så derfor skal vi have en række for hver state vi vil kigge på
                 self.c[i, :] = np.linspace(self.abar[0], self.a[i,0]+self.w, n_c) #.reshape((1, n_c)) 

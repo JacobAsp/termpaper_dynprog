@@ -392,11 +392,6 @@ ss_value.solve = vfi
 # We solve primarily for value of unemployment and search effort
 #########################################################################################
 
-#########################################################################################
-# This Function solves the model by backward induction, given the parameters and institutions.
-# We then obtain optimal policies for consumption and search effort, as well as the value of being employed and unemployed.
-# That is given we are in period t with asset level a.
-#########################################################################################
 #def SolveModel(delta, gamma, eta, k, lmbda, abar, n_a, n_c, T1, T2, T3, T, N, b1, b2, b3, welfare, w, R ):
 #@njit(cache=True)
 def SolveModel(params, institutions, abar, htm):
@@ -538,10 +533,7 @@ def SolveModel(params, institutions, abar, htm):
 
     return S, V_emp, V_uemp, c_emp, c_uemp, Vss_emp, Vss_uemp, css_emp, css_uemp, survival, benefits
 
-#########################################################################################
-# This Function solves the model forwads by taking the optimal consumption and search effort policies and 
-# simulating the evolution of assets, consumption, and search effort over time.
-#########################################################################################
+# Here we solve the model forward to get the consumption, search and asset paths given the optimal policy functions and the initial asset distribution.
 
 def SolveForward(params, institutions, abar, htm):
     # Solve model by backwards induction
@@ -618,7 +610,7 @@ def SolveForward(params, institutions, abar, htm):
             cons[i, t] = c_now
             search[i, t] = s_now
             assets[i, t + 1] = asset_next
-            asset_now = asset_next    
+            asset_now = asset_next
 
     survival = np.ones((n_a_eff, T + 1))
 
@@ -629,10 +621,6 @@ def SolveForward(params, institutions, abar, htm):
         )
 
     return cons, search, survival, assets, asset_grid, benefits,
-
-    #return cons, search, assets, asset_grid
-
-
 
 
 #########################################################################################
@@ -835,36 +823,22 @@ def SolveMultiTypeModel(params,institutions, abar, htm):
     #------------------------------------------------------------------ 
     
     S_types = []
-    V_emp_types = []
-    V_uemp_types = []
-    c_emp_types = []
-    c_uemp_types = []
-
-    Vss_emp_types = []
-    Vss_uemp_types = []
-    css_emp_types = []
-    css_uemp_types = []
+    cons_types = []
     survival_types = []
-
+    assets_types = []
+    asset_grid_out = None
     benefits_out = None
     
 
     for k_j in kvals:
         params_j = np.array([delta, gamma, eta, k_j, lmbda, N]) 
-        S, V_emp, V_uemp, c_emp, c_uemp, Vss_emp, Vss_uemp, css_emp, css_uemp, survival, benefits = SolveModel(params_j, institutions, abar, htm)
+        cons, S, survival, assets, asset_grid, benefits = SolveForward(params_j, institutions, abar, htm)
+
+        cons_types.append(cons)
         S_types.append(S)
-        V_emp_types.append(V_emp)
-        V_uemp_types.append(V_uemp)
-        c_emp_types.append(c_emp)
-        c_uemp_types.append(c_uemp)
-
-        Vss_emp_types.append(Vss_emp)
-        Vss_uemp_types.append(Vss_uemp)
-        css_emp_types.append(css_emp)
-        css_uemp_types.append(css_uemp)
-
         survival_types.append(survival)
-
+        assets_types.append(assets)
+        asset_grid_out = asset_grid
         benefits_out = benefits
         
 
@@ -899,4 +873,4 @@ def SolveMultiTypeModel(params,institutions, abar, htm):
     # Last period: copy previous hazard
     s_agg[:, -1] = s_agg[:, -2]
 
-    return s_agg, V_emp_types, V_uemp_types, c_emp_types, c_uemp_types, Vss_emp_types, Vss_uemp_types, css_emp_types, css_uemp_types, survival_agg, benefits_out
+    return c_uemp_types, s_agg, assets_types, asset_grid_out, benefits_out

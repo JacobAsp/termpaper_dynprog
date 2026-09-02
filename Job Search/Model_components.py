@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import scipy
 from scipy import interpolate  # type: ignore # Interpolation routines
 from matplotlib.gridspec import GridSpec
-from numba import njit, vectorize
+#from numba import njit, vectorize
 from scipy.stats import beta
 
 

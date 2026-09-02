@@ -484,7 +484,6 @@ def SolveModel(params, institutions, abar, htm):
         # Asset grid
         # local abar copy to avoid modifying the original abar
         abar_local = np.array(abar, dtype=float).copy()
-
         abar_local[0] = np.maximum(np.finfo(float).eps, abar_local[0])              # vælger numerisk nul, så vi kan tage log. 
         a = np.linspace(abar_local[0], abar_local[1], n_a_eff).reshape((n_a_eff, 1))        # laver en n_a x 1 matrice med værdierne fra 0 til maks asset level. 
         
@@ -494,8 +493,14 @@ def SolveModel(params, institutions, abar, htm):
 
             # consumption possibilites
             c = np.empty((n_a_eff, n_c_eff))    # For hver state kan man vælge n_c forskellige niveauer af forbrug i perioden
-            for i in range(n_a_eff):        # vi kigger på alle rækkerne og tilføjer forbrugsmuligheder fra 0 og op til maks forbrug som er givet ved assets + løn.  
-                c[i, :] = np.linspace(abar_local[0], (a[i,0]+y), n_c_eff) #.reshape((1, n_c))     # Laver det om til en vektor med 1 række og n_c kolonner.
+            for i in range(n_a_eff): 
+                       # vi kigger på alle rækkerne og tilføjer forbrugsmuligheder fra 0 og op til maks forbrug som er givet ved assets + løn.
+                c_min = max(np.finfo(float).eps, a[i, 0] + y - abar_local[1] / (1 + R))  # minimum consumption level to avoid negative assets in the next period
+                                                                                         # we maximize over a small positive number to avoid numerical issues with log(0)
+                                                                                         # and then the boundary c_t >= A_t + y_t - A_t+1/(1+R) ensures that we don't consume more than what we have in assets + current income - the maximum asset level in the next period.
+                c_max = a[i, 0] + y # maximum consumption A can't be negative, so we can't consume more than what we have in assets + current income  
+                c[i, :] = np.linspace(c_min, c_max, n_c_eff) #.reshape((1, n_c))     # Laver det om til en vektor med 1 række og n_c kolonner.
+                #c[i, :] = np.linspace(abar_local[0], (a[i,0]+y), n_c_eff) #.reshape((1, n_c))     # Laver det om til en vektor med 1 række og n_c kolonner.
 
             a1 = (a - c + y) * (1 + R)   # assets i næste periode
 
@@ -613,6 +618,17 @@ def SolveForward(params, institutions, abar, htm):
 
                 asset_next = (asset_now - c_now + benefits[t]) * (1 + R)
                 asset_next = max(asset_next, asset_grid[0])
+                if asset_next > asset_grid[-1]:
+                    raise ValueError(
+                        f"Forward assets exceed asset grid: "
+                        f"i={i}, t={t}, "
+                        f"A_t={asset_now:.4f}, "
+                        f"c_t={c_now:.4f}, "
+                        f"y_t={benefits[t]:.4f}, "
+                        f"A_next={asset_next:.4f}, "
+                        f"A_max={asset_grid[-1]:.4f}, "
+                        f"params={params}"
+                    )
 
             # Store results for both hand-to-mouth and asset models
             cons[i, t] = c_now
@@ -651,12 +667,18 @@ def SolveForward(params, institutions, abar, htm):
 def simulate_moments(params, institutions_pre, institutions_post, abar, weights, htm):
 
     # Simulate Model
-    S_pre, V_emp_pre, V_unemp_pre, c_emp_pre, c_unemp_pre, Vss_emp_pre, Vss_uemp_pre, css_emp_pre, css_uemp_pre, survival_pre, benefits_pre      = \
+    #S_pre, V_emp_pre, V_unemp_pre, c_emp_pre, c_unemp_pre, Vss_emp_pre, Vss_uemp_pre, css_emp_pre, css_uemp_pre, survival_pre, benefits_pre      = \
+    #    SolveMultiTypeModel(params,institutions_pre, abar, htm)
+
+    #S_post, V_emp_post, V_unemp_post, c_emp_post, c_unemp_post, Vss_emp_post, Vss_uemp_post, css_emp_post, css_uemp_post, survival_post, benefits_post = \
+    #    SolveMultiTypeModel(params,institutions_post, abar, htm)
+
+    cons_pre, S_pre, assets_pre, asset_grid_pre, benefits_pre    = \
         SolveMultiTypeModel(params,institutions_pre, abar, htm)
-
-    S_post, V_emp_post, V_unemp_post, c_emp_post, c_unemp_post, Vss_emp_post, Vss_uemp_post, css_emp_post, css_uemp_post, survival_post, benefits_post = \
+    
+            
+    cons_post, S_post, assets_post, asset_grid_post, benefits_post = \
         SolveMultiTypeModel(params,institutions_post, abar, htm)
-
     # Return Moments
     
     # We exclude the first observed moment to avoid on job, job search. This is alligned with excluding the first moment in 'matching moments' 

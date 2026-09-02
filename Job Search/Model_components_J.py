@@ -639,10 +639,17 @@ def SolveForward(params, institutions, abar, htm):
 def simulate_moments(params, institutions_pre, institutions_post, abar, weights, htm):
 
     # Simulate Model
-    S_pre, V_emp_pre, V_unemp_pre, c_emp_pre, c_unemp_pre, Vss_emp_pre, Vss_uemp_pre, css_emp_pre, css_uemp_pre, survival_pre, benefits_pre      = \
+    #S_pre, V_emp_pre, V_unemp_pre, c_emp_pre, c_unemp_pre, Vss_emp_pre, Vss_uemp_pre, css_emp_pre, css_uemp_pre, #survival_pre, benefits_pre      = \
+    #    SolveMultiTypeModel(params,institutions_pre, abar, htm)
+    #S_post, V_emp_post, V_unemp_post, c_emp_post, c_unemp_post, Vss_emp_post, Vss_uemp_post, css_emp_post, #css_uemp_post, survival_post, benefits_post = \
+    #        SolveMultiTypeModel(params,institutions_post, abar, htm
+
+     # Simulate Model
+    cons_pre, S_pre, assets_pre, asset_grid_pre, benefits_pre    = \
         SolveMultiTypeModel(params,institutions_pre, abar, htm)
 
-    S_post, V_emp_post, V_unemp_post, c_emp_post, c_unemp_post, Vss_emp_post, Vss_uemp_post, css_emp_post, css_uemp_post, survival_post, benefits_post = \
+        
+    cons_post, S_post, assets_post, asset_grid_post, benefits_post = \
         SolveMultiTypeModel(params,institutions_post, abar, htm)
 
     # Return Moments

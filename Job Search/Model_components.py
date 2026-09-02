@@ -779,9 +779,157 @@ class smm:
 
         return out
 
-
-
 def SolveMultiTypeModel(params,institutions, abar, htm):
+    '''
+    Solves the retirement model in a multi-type setup.
+        Arguments:
+            params (array): Array of parameter values for all types.
+        Returns:
+    '''
+    if hasattr(params, "columns") and "value" in params.columns:
+        params_vec = params["value"].to_numpy()
+    else:
+        params_vec = np.asarray(params).ravel()
+
+    if len(params_vec)==6:
+        delta, gamma, eta, k1, lmbda, N = params_vec
+        kvals = [k1]
+        shares = np.array([1.0])
+
+    # Variables for 2-type estimation
+    elif len(params_vec)==8:
+        delta, gamma, eta,k1, lmbda, N, k2, q1 = params_vec
+        kvals = [k1, k2]
+        shares = np.array([q1, 1-q1])
+
+    # Variables for 3-type estimation
+    elif len(params_vec)==10:
+        delta, gamma, eta, k1, lmbda, N, k2, k3, q1, q2 = params_vec
+        kvals = [k1, k2, k3]
+        shares = np.array([q1, q2, 1-q1-q2] )
+        
+
+    else:
+        raise ValueError('Number of types not supported. Please use 1, 2 or 3 types.')
+        
+
+    # Validity Check
+    if np.any(shares < 0):
+        raise ValueError("Type shares must be non-negative.")
+    
+    if not np.isclose(shares.sum(), 1.0):
+        raise ValueError("Type shares must sum to 1.")
+
+    # htm is already in institutions
+    n_a = int(institutions[0])
+
+    weights = make_weights(
+        htm,
+        abar,
+        n_a
+    )
+    #------------------------------------------------------------------
+    # SOLVE THE MODEL FOR EACH TYPE
+    #------------------------------------------------------------------ 
+    
+    S_types = []
+    cons_types = []
+    survival_types = []
+    assets_types = []
+    asset_grid_out = None
+    benefits_out = None
+    
+
+    for k_j in kvals:
+        params_j = np.array([delta, gamma, eta, k_j, lmbda, N]) 
+        cons, S, survival, assets, asset_grid, benefits = SolveForward(params_j, institutions, abar, htm)
+
+        cons_types.append(cons)
+        S_types.append(S)
+        survival_types.append(survival)
+        assets_types.append(assets)
+        asset_grid_out = asset_grid
+        benefits_out = benefits
+        
+
+    #------------------------------------------------------------------
+    # Aggregate survival across types
+    #------------------------------------------------------------------
+    survival_agg = np.zeros_like(survival_types[0])
+
+    for j in range(len(kvals)):
+
+        # Weight type j by its population share,
+        # but preserve all asset states
+        survival_agg += shares[j] * survival_types[j]
+
+   
+    #------------------------------------------------------------------
+    # Aggregate hazard
+    #------------------------------------------------------------------
+    s_agg = np.zeros_like(survival_agg)
+    Tplus1 = survival_agg.shape[1]
+
+    for t in range(Tplus1 - 1):
+
+        # Which asset states still have meaningful survival mass?
+        valid = survival_agg[:, t] > 1e-7
+
+        s_agg[valid, t] = (
+            survival_agg[valid, t]
+            - survival_agg[valid, t + 1]
+        ) / survival_agg[valid, t]
+
+
+    # Last period: copy previous hazard
+    s_agg[:, -1] = s_agg[:, -2]
+
+    cons_agg = np.zeros_like(cons_types[0])
+
+    for t in range(cons_agg.shape[1]):
+
+        denominator = survival_agg[:, t]
+
+        numerator = np.zeros(cons_agg.shape[0])
+
+        for j in range(len(kvals)):
+            numerator += (
+                shares[j]
+                * survival_types[j][:, t]
+                * cons_types[j][:, t]
+            )
+
+        valid = denominator > 1e-10
+
+        cons_agg[valid, t] = (
+            numerator[valid]
+            / denominator[valid]
+        )
+    assets_agg = np.zeros_like(assets_types[0])
+
+    for t in range(assets_agg.shape[1]):
+
+        denominator = survival_agg[:, t]
+
+        numerator = np.zeros(assets_agg.shape[0])
+
+        for j in range(len(kvals)):
+            numerator += (
+                shares[j]
+                * survival_types[j][:, t]
+                * assets_types[j][:, t]
+            )
+
+        valid = denominator > 1e-10
+
+        assets_agg[valid, t] = (
+            numerator[valid]
+            / denominator[valid]
+        )
+
+    return cons_agg, s_agg, assets_agg, asset_grid_out, benefits_out
+
+def SolveMultiTypeModel2(params,institutions, abar, htm):
     '''
     Solves the retirement model in a multi-type setup.
         Arguments:

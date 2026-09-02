@@ -853,6 +853,7 @@ def SolveMultiTypeModel(params,institutions, abar, htm):
         # but preserve all asset states
         survival_agg += shares[j] * survival_types[j]
 
+   
     #------------------------------------------------------------------
     # Aggregate hazard
     #------------------------------------------------------------------
@@ -873,4 +874,47 @@ def SolveMultiTypeModel(params,institutions, abar, htm):
     # Last period: copy previous hazard
     s_agg[:, -1] = s_agg[:, -2]
 
-    return c_uemp_types, s_agg, assets_types, asset_grid_out, benefits_out
+    cons_agg = np.zeros_like(cons_types[0])
+
+    for t in range(cons_agg.shape[1]):
+
+        denominator = survival_agg[:, t]
+
+        numerator = np.zeros(cons_agg.shape[0])
+
+        for j in range(len(kvals)):
+            numerator += (
+                shares[j]
+                * survival_types[j][:, t]
+                * cons_types[j][:, t]
+            )
+
+        valid = denominator > 1e-10
+
+        cons_agg[valid, t] = (
+            numerator[valid]
+            / denominator[valid]
+        )
+    assets_agg = np.zeros_like(assets_types[0])
+
+    for t in range(assets_agg.shape[1]):
+
+        denominator = survival_agg[:, t]
+
+        numerator = np.zeros(assets_agg.shape[0])
+
+        for j in range(len(kvals)):
+            numerator += (
+                shares[j]
+                * survival_types[j][:, t]
+                * assets_types[j][:, t]
+            )
+
+        valid = denominator > 1e-10
+
+        assets_agg[valid, t] = (
+            numerator[valid]
+            / denominator[valid]
+        )
+
+    return cons_agg, s_agg, assets_agg, asset_grid_out, benefits_out

@@ -62,13 +62,15 @@ def make_weights(htm, abar, n_a):
         a_grid = np.linspace(abar[0], abar[1], n_a)
 
         # Scale to [0,1]
-        x = (a_grid - abar[0]) / (abar[1] - abar[0])
+        x = (a_grid - abar[0]) / (abar[1] - abar[0])        # vi dividerer alle værdier med den højeste værdi. Starter ved 0. 
+                                                            # på den måde er vi kun mellem 0 og 1. 
+                                                            # Jeg forstår ikke, hvorfor, at det er her er nødvendigt. 
 
         # Bin boundaries
         edges = np.empty(n_a + 1)
-        edges[1:-1] = (x[:-1] + x[1:]) / 2
-        edges[0] = 0
-        edges[-1] = 1
+        edges[1:-1] = (x[:-1] + x[1:]) / 2  # for alle indices tager vi gennemsnittet af 0,1; 1,2; 2,3 osv. Hvorfor det?
+        edges[0] = 0                        # den første værdi skal være 0
+        edges[-1] = 1                       # den sidste værdi skal være én
 
         alpha = 0.3
         beta_param = 1.7
@@ -77,7 +79,7 @@ def make_weights(htm, abar, n_a):
         # Long right tail
 
         weights = np.diff(
-            beta.cdf(edges, alpha, beta_param)
+            beta.cdf(edges, alpha, beta_param)                      # vi laver en cdf med bestemte værdier. alpha = startværdien, beta = udviklingen 
         )
 
         weights /= weights.sum()
@@ -117,7 +119,7 @@ def employment_BI(Vss, ref_path, delta, eta, lmbda, R, w, abar, T, N, n_a, n_c, 
     # ---------------------------------------------------------------------
     if htm == 1:
         #Only one asset state: A = 0
-        V_emp = np.zeros((1, T+1))   # placeholder variable for getting the job in period in period T with asset value a.
+        V_emp = np.zeros((1, T+1))   # placeholder variable for getting the job in every period that is not the first period.
         c_emp = np.zeros((1, T+1))   # associated optimal consumption, first period after job start, not really that relevant though
 
         Vss_htm = np.array(Vss).reshape(-1)[0]  # steady state value from the value function iterations.
@@ -125,8 +127,9 @@ def employment_BI(Vss, ref_path, delta, eta, lmbda, R, w, abar, T, N, n_a, n_c, 
             V0 = Vss_htm   # steady state value from the value function iterations.
             for n in np.arange(N-1, -1, -1):
                 c_current = w
-                V0 = u(c_current, ref_path[j,j+n], eta, lmbda) + delta * V0
-                V_emp[0, j] = V0
+                V0 = u(c_current, ref_path[j,j+n], eta, lmbda) + delta * V0     # i periode T tages SS værdien. Derefter tages nytten af forbrug = w ift. ref path i j'te periiode indtil j+n'te period
+                                                                                # fordi man får et job i j'te periode og har nytte fra ref-path i n perioder indtil konvergens. 
+                V_emp[0, j] = V0        # tilføjes til matrix. Den bliver 1 x T
                 c_emp[0, j] = w
         return V_emp, c_emp
 
@@ -140,8 +143,9 @@ def employment_BI(Vss, ref_path, delta, eta, lmbda, R, w, abar, T, N, n_a, n_c, 
         c = np.empty((n_a, n_c))    # For hver state kan man vælge n_c forskellige niveauer af forbrug i perioden
         for i in range(n_a):        # vi kigger på alle rækkerne og tilføjer forbrugsmuligheder fra 0 og op til maks forbrug som er givet ved assets + løn.  
             c[i, :] = np.linspace(abar[0], (a[i]+w), n_c).reshape((1, n_c))     # Laver det om til en vektor med 1 række og n_c kolonner. 
-
+                                                                                # og det gør vi så n_a gange, så det bliver n_a til n_c
         a1 = (a - c + w) * (1 + R)   # assets i næste periode. Det er en n_a x n_c matrix. 
+                                     # den har altså for alle asset levels (rækker) alle muligheder for forbrug (kolonner). 
 
         V_emp = np.zeros((T+1, n_a))   # placeholder variable for getting the job in period in period T with asset value a. 
         c_emp = np.zeros((T+1, n_a))   # associated optimal consumption, first period after job start, not really that relevant though...
@@ -167,7 +171,11 @@ def employment_BI(Vss, ref_path, delta, eta, lmbda, R, w, abar, T, N, n_a, n_c, 
         c_emp = c_emp.transpose()
         return V_emp, c_emp
 
-
+# I think that there might be a mistake here, because we don't ever update the asset level here. 
+# So, it's like a light version of the 'mistake' we've had made before we're we don't forward solve. 
+# this basically means that the value of getting the job in period j with A assets is the value of keeping those assets forever
+# but acting as if you didn't keep them in every period. 
+# this can be fixed if we also forward solve 'employment BI'. 
 
 
 
@@ -311,7 +319,7 @@ class ss_value:
                 self.c[i, :] = np.linspace(self.abar[0], self.a[i,0]+self.w, n_c) #.reshape((1, n_c)) 
                     
     #@njit(cache=True)
-    def bellman(self, V0, R):   
+    def bellman(self, V0, R):   # V0 is a vector with guessing initial values. Must be of correct dimensions, but values don't matter
         # ---------------------------------------------------------------------
         # Hand-To-Mouth Model: 
         # ---------------------------------------------------------------------

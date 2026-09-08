@@ -420,7 +420,7 @@ def SolveModel(params, institutions, abar, htm):
             search (float): Value of the optimal search effort.
     '''
     # Unpack parameters and institutions
-    delta, gamma, eta, k, lmbda, N = params
+    delta, beta, gamma, eta, k, lmbda, N = params
     n_a, n_c, T1, T2, T3, T, b1, b2, b3, welfare, w, R = institutions
 
     # Integer parameters
@@ -561,8 +561,10 @@ def SolveForward_normal(params, institutions, abar, htm):
     S, V_emp, V_uemp, c_emp, c_uemp, Vss_emp, Vss_uemp, css_emp, css_uemp, survival, benefits =SolveModel(params, institutions, abar, htm)
 
     #unpack parameters and institutions
-    delta, gamma, eta, k, lmbda, N = params
+    delta, beta, gamma, eta, k, lmbda, N = params
     n_a, n_c, T1, T2, T3, T, b1, b2, b3, welfare, w, R = institutions
+
+    N = int(N)
 
     # Cast institution parameters to integers
     n_a = int(n_a)
@@ -657,13 +659,15 @@ def SolveForward_normal(params, institutions, abar, htm):
     #return cons, search, assets, asset_grid
 
 # this model uses the optimal decision rules but alters them in every period with a naive present biased agent. 
-def SolveForward_pb(params, institutions, abar, htm, beta):
+def SolveForward_pb(params, institutions, abar, htm): #GO_TO tilføj evt beta her igen.
     # Solve model by backwards induction
     S, V_emp, V_uemp, c_emp, c_uemp, Vss_emp, Vss_uemp, css_emp, css_uemp, survival, benefits =SolveModel(params, institutions, abar, htm)
 
     #unpack parameters and institutions
-    delta, gamma, eta, k, lmbda, N = params
+    delta, beta, gamma, eta, k, lmbda, N = params
     n_a, n_c, T1, T2, T3, T, b1, b2, b3, welfare, w, R = institutions
+
+    N = int(N)
 
     # Cast institution parameters to integers
     n_a = int(n_a)
@@ -789,11 +793,11 @@ def SolveForward_pb(params, institutions, abar, htm, beta):
 
     return cons, search, survival, assets, asset_grid, benefits,
 
-def SolveForward(params, beta, institutions, abar, htm):
+def SolveForward(params, institutions, abar, htm):      # her skal du måske tilføje beta igen GO_TO
     if beta == 1:
         return SolveForward_normal(params, institutions, abar, htm)
     else:
-        return SolveForward_pb(params, institutions, abar, htm, beta)
+        return SolveForward_pb(params, institutions, abar, htm)
     
 
 
@@ -949,7 +953,7 @@ class smm:
 
         return out
 
-def SolveMultiTypeModel(params,institutions, abar, htm):
+def SolveMultiTypeModel(params, institutions, abar, htm):
     '''
     Solves the retirement model in a multi-type setup.
         Arguments:
@@ -961,20 +965,20 @@ def SolveMultiTypeModel(params,institutions, abar, htm):
     else:
         params_vec = np.asarray(params).ravel()
 
-    if len(params_vec)==6:
-        delta, gamma, eta, k1, lmbda, N = params_vec
+    if len(params_vec)==7:
+        delta, beta, gamma, eta, k1, lmbda, N = params_vec
         kvals = [k1]
         shares = np.array([1.0])
 
     # Variables for 2-type estimation
-    elif len(params_vec)==8:
-        delta, gamma, eta,k1, lmbda, N, k2, q1 = params_vec
+    elif len(params_vec)==9:
+        delta, beta, gamma, eta,k1, lmbda, N, k2, q1 = params_vec
         kvals = [k1, k2]
         shares = np.array([q1, 1-q1])
 
     # Variables for 3-type estimation
-    elif len(params_vec)==10:
-        delta, gamma, eta, k1, lmbda, N, k2, k3, q1, q2 = params_vec
+    elif len(params_vec)==11:
+        delta, beta, gamma, eta, k1, lmbda, N, k2, k3, q1, q2 = params_vec
         kvals = [k1, k2, k3]
         shares = np.array([q1, q2, 1-q1-q2] )
         
@@ -1011,7 +1015,7 @@ def SolveMultiTypeModel(params,institutions, abar, htm):
     
 
     for k_j in kvals:
-        params_j = np.array([delta, gamma, eta, k_j, lmbda, N]) 
+        params_j = np.array([delta, beta, gamma, eta, k_j, lmbda, N]) 
         cons, S, survival, assets, asset_grid, benefits = SolveForward(params_j, institutions, abar, htm)
 
         cons_types.append(cons)

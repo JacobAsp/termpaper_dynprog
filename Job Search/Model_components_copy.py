@@ -657,7 +657,7 @@ def SolveForward_normal(params, institutions, abar, htm):
     #return cons, search, assets, asset_grid
 
 # this model uses the optimal decision rules but alters them in every period with a naive present biased agent. 
-def SolveForward_pb(params, institutions, abar, htm, beta = 1.0):
+def SolveForward_pb(params, institutions, abar, htm, beta):
     # Solve model by backwards induction
     S, V_emp, V_uemp, c_emp, c_uemp, Vss_emp, Vss_uemp, css_emp, css_uemp, survival, benefits =SolveModel(params, institutions, abar, htm)
 
@@ -723,11 +723,11 @@ def SolveForward_pb(params, institutions, abar, htm, beta = 1.0):
 
             else:           # if assets then present bias also affects consumption smoothing to be more front loaded. We need to re-calculate that
                 # define consumption (the same way as when we solve the model)
-                y = benefits(t)
-                c_min = max(np.finfo(float).eps, asset_now[i, 0] + y - abar_local[1] / (1 + R)) # asset[i] because we solve for every initial asset level
-                c_max = asset_now[i, 0] + y
+                y = benefits[t]
+                c_min = max(np.finfo(float).eps, asset_now + y - abar_local[1] / (1 + R)) # asset[i] because we solve for every initial asset level
+                c_max = asset_now + y
 
-                c[i,:] = np.linspace(c_min, c_max, n_c_eff) # c bliver 1 x n_c_eff matrix med forbrugsmuligheder fra 0 til maks
+                c = np.linspace(c_min, c_max, n_c_eff) # c bliver 1 x n_c_eff matrix med forbrugsmuligheder fra 0 til maks
 
                 a1 = (asset_now - c + y) * (1 + R)
 
@@ -754,9 +754,9 @@ def SolveForward_pb(params, institutions, abar, htm, beta = 1.0):
 
                 # Vi fjerner v_emp fra original kode fordi den har vi allerede
 
-                i_max = np.argmax(matV, axis=1)               
-                c_now[:, t] = c[np.arange(n_a_eff), i_max]
-                s_now[:, t] = S_choices[np.arange(n_a_eff), i_max]
+                i_max = np.argmax(matV)               
+                c_now = c[i_max]
+                s_now = S_choices[i_max]
                 asset_next = a1[i_max]
 
             
@@ -790,10 +790,10 @@ def SolveForward_pb(params, institutions, abar, htm, beta = 1.0):
     return cons, search, survival, assets, asset_grid, benefits,
 
 def SolveForward(params, beta, institutions, abar, htm):
-    if beta == 1: 
-        SolveForward_normal(params, institutions, abar, htm)
-    else: 
-        SolveForward_pb(params, institutions, abar, htm, beta)
+    if beta == 1:
+        return SolveForward_normal(params, institutions, abar, htm)
+    else:
+        return SolveForward_pb(params, institutions, abar, htm, beta)
     
 
 

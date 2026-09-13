@@ -1,0 +1,18 @@
+\begin{table}
+\caption{SMM estimates across model specifications and optimization algorithms.}
+\label{tab:all_estimates}
+\begin{tabular}{llrrrrrrrrrrrr}
+\toprule
+Algorithm & Model & delta & gamma & eta & lambda & k1 & k2 & k3 & q1 & q2 & q3 & SSE & Minutes \\
+\midrule
+scipy_lbfgsb & Reference dependent 1 type & 0.9500 & 0.6631 & 1.0731 & 13.8702 & 358.5147 & -- & -- & -- & -- & -- & 133.3676 & 19.5280 \\
+scipy_ls_trf & Reference dependent 1 type & 0.9500 & 0.9255 & 1.3842 & 14.9934 & 894.3129 & -- & -- & -- & -- & -- & 126.5209 & 2.0181 \\
+scipy_lbfgsb & Standard 1 type & 0.9138 & 0.9770 & 0.0000 & 0.0000 & 358.1948 & -- & -- & -- & -- & -- & 559.7414 & 8.5937 \\
+scipy_ls_trf & Standard 1 type & 0.9168 & 0.9267 & 0.0000 & 0.0000 & 315.8258 & -- & -- & -- & -- & -- & 578.5575 & 1.2719 \\
+scipy_lbfgsb & Standard 2 type & 0.9422 & 0.7252 & 0.0000 & 0.0000 & 300.0364 & 150.5234 & -- & 0.6048 & -- & 0.3952 & 517.7298 & 32.0751 \\
+scipy_ls_trf & Standard 2 type & 0.8278 & 1.3632 & 0.0000 & 0.0000 & 899.9379 & 35.9179 & -- & 0.7511 & -- & 0.2489 & 96.6265 & 7.8213 \\
+scipy_lbfgsb & Standard 3 type & 0.9033 & 0.7951 & 0.0000 & 0.0000 & 397.6270 & 138.6277 & 18.2585 & 0.3516 & 0.4249 & 0.2236 & 95.5216 & 68.3167 \\
+scipy_ls_trf & Standard 3 type & 0.7768 & 1.2859 & 0.0000 & 0.0000 & 730.8537 & 200.3392 & 16.6960 & 0.4899 & 0.3197 & 0.1904 & 94.6890 & 5.8818 \\
+\bottomrule
+\end{tabular}
+\end{table}

@@ -971,8 +971,8 @@ def SolveMultiTypeModel2(params,institutions, abar, htm):
     else:
         params_vec = np.asarray(params).ravel()
 
-    if len(params_vec)==7:
-        delta, gamma,beta, eta, k1, lmbda, N = params_vec
+    if len(params_vec)==6:      # måske har jeg ændret noget her ved en fejl... 
+        delta, gamma, eta, k1, lmbda, N = params_vec
         kvals = [k1]
         shares = np.array([1.0])
 
